@@ -1,0 +1,44 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Virtual env ---
+venv/
+.env/
+
+# --- Logs ---
+*.log
+
+# --- OS ---
+.DS_Store
+
+# --- Plots / outputs ---
+outputs/
+plots/
+mnist/mnist_output*
+ripple_outputs/
+ripple_outputs_old/
+figures/
+*.png
+*.jpg
+*.pdf
+*.csv
+*.json
+
+
+# --- Data ---
+data/
+
+# --- Archive --- 
+archive/
+
+# Token
+*token.txt
+# TRW is not used
+*trw.py
+cifar_archive
