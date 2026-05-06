@@ -308,9 +308,11 @@ def _plot_sq_logit_diff_on_ax(ax, cfg, bin_centers, stats_full, setting_full):
     }
 
     for confidence_level, stats in stats_full.items():
+        
+        metric = "mse_loss_diff" if cfg.unlearning_method == "ga" else "sq_logit_diff"
 
-        mean = stats["sq_logit_diff"]["mean"]
-        stderr = stats["sq_logit_diff"]["stderr"]
+        mean = stats[metric]["mean"]
+        stderr = stats[metric]["stderr"]
 
         label_addition = (
             f", deleted prob is {confidence_level}" if confidence_level else ""
@@ -332,7 +334,7 @@ def _plot_sq_logit_diff_on_ax(ax, cfg, bin_centers, stats_full, setting_full):
             color=curve_color,
         )
 
-        deleted_stats = stats.get("deleted_point_sq_logit_diff")
+        deleted_stats = stats.get(f"deleted_point_{metric}")
         if deleted_stats is not None and cfg.unlearning_method == "ga":
             deleted_mean = deleted_stats["mean"]
             deleted_stderr = deleted_stats["stderr"]
@@ -360,9 +362,9 @@ def _plot_sq_logit_diff_on_ax(ax, cfg, bin_centers, stats_full, setting_full):
                 fontsize=10,
             )
 
-        if "full_sq_logit_diff" in stats:
-            full_mean = stats["full_sq_logit_diff"]["mean"]
-            full_stderr = stats["full_sq_logit_diff"]["stderr"]
+        if f"full_{metric}" in stats:
+            full_mean = stats[f"full_{metric}"]["mean"]
+            full_stderr = stats[f"full_{metric}"]["stderr"]
             ax.plot(
                 bin_centers,
                 full_mean,
@@ -377,8 +379,10 @@ def _plot_sq_logit_diff_on_ax(ax, cfg, bin_centers, stats_full, setting_full):
             )
 
     if cfg.unlearning_method == "ga":
-        ax.set_ylabel(r"Mean squared logit difference")
-        
+        ax.set_ylabel(r"MSE difference")
+    else:
+        ax.set_ylabel(r"Squared logit difference")
+
     ax.set_xlabel(r"$\dfrac{\langle x_q, x_f \rangle}{\|x_f\|^2}$")
     ax.grid(alpha=0.3)
 

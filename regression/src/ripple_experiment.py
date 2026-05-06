@@ -6,6 +6,7 @@ from pathlib import Path
 from copy import deepcopy
 import numpy as np
 from tqdm import tqdm
+from typing import Any
 
 from regression.src.train.train_retrain import generate_regression_training_data
 from regression.src.unlearn.unlearn_regression import unlearn
@@ -13,7 +14,7 @@ from regression.src.ripple.ripple_regression import (
     evaluate_models_by_ripple,
     aggregate_by_bin,
 )
-from regression.src.utils import set_seed
+from regression.src.utils import set_seed, mse_loss
 
 
 def _build_setting(cfg):
@@ -192,25 +193,29 @@ def run_experiment(cfg) -> dict:
     )
 
     sq_logit_diff_by_bin = eval_result[f"{cfg.unlearning_method}_sq_logit_diff_by_bin"]
-    delta_logit_by_bin = eval_result[f"{cfg.unlearning_method}_delta_logit_by_bin"]
-    delta_logit_var_by_bin = eval_result[
-        f"{cfg.unlearning_method}_delta_logit_var_by_bin"
-    ]
+    mse_loss_diff_by_bin =  eval_result[f"{cfg.unlearning_method}_mse_loss_by_bin"]
+    # delta_logit_by_bin = eval_result[f"{cfg.unlearning_method}_delta_logit_by_bin"]
+    # delta_logit_var_by_bin = eval_result[
+    #     f"{cfg.unlearning_method}_delta_logit_var_by_bin"
+    # ]
     full_sq_logit_diff_by_bin = eval_result["full_sq_logit_diff_by_bin"]
-    pointwise_sq_delta_logit = eval_result[f"{cfg.unlearning_method}_sq_delta_logit"]
-    pointwise_delta_logit = eval_result[f"{cfg.unlearning_method}_delta_logit"]
+    full_mse_loss_diff_by_bin = eval_result["full_mse_loss_by_bin"]
+    # pointwise_sq_delta_logit = eval_result[f"{cfg.unlearning_method}_sq_delta_logit"]
+    # pointwise_delta_logit = eval_result[f"{cfg.unlearning_method}_delta_logit"]
 
-    if cfg.model_type == "logistic":
-        flip_rate_by_bin = eval_result[f"{cfg.unlearning_method}_flip_rate_by_bin"]
-        pointwise_flip_indicator = eval_result[
-            f"{cfg.unlearning_method}_flip_indicator"
-        ]
-        full_flip_rate_by_bin = eval_result["full_flip_rate_by_bin"]
+    # if cfg.model_type == "logistic":
+    #     flip_rate_by_bin = eval_result[f"{cfg.unlearning_method}_flip_rate_by_bin"]
+    #     pointwise_flip_indicator = eval_result[
+    #         f"{cfg.unlearning_method}_flip_indicator"
+    #     ]
+    #     full_flip_rate_by_bin = eval_result["full_flip_rate_by_bin"]
 
-    deleted_delta_logit = float(
+    deleted_sq_logit_diff = float(
         setting["x_a"] @ theta_unlearn - setting["x_a"] @ setting["theta_retrain"]
-    )
-    deleted_sq_logit_diff = deleted_delta_logit**2
+    )**2
+
+    x_a, y_a =  setting["x_a"], setting["y_a"]
+    deleted_mse_loss_diff =  mse_loss(y_a, x_a @ theta_unlearn) - mse_loss(y_a, x_a @ setting["theta_retrain"])
 
     # Save raw arrays / metadata
     summary = {
@@ -231,20 +236,23 @@ def run_experiment(cfg) -> dict:
         "rho": eval_result["rho"].tolist(),
         "bin_idx": eval_result["bin_idx"].tolist(),
         "sq_logit_diff_by_bin": sq_logit_diff_by_bin.tolist(),
-        "delta_logit_by_bin": delta_logit_by_bin.tolist(),
-        "delta_logit_var_by_bin": delta_logit_var_by_bin.tolist(),
+        "mse_loss_diff_by_bin": mse_loss_diff_by_bin.tolist(),
+        # "delta_logit_by_bin": delta_logit_by_bin.tolist(),
+        # "delta_logit_var_by_bin": delta_logit_var_by_bin.tolist(),
         "full_sq_logit_diff_by_bin": full_sq_logit_diff_by_bin.tolist(),
-        "pointwise_sq_delta_logit": pointwise_sq_delta_logit.tolist(),
-        "pointwise_delta_logit": pointwise_delta_logit.tolist(),
-        "deleted_delta_logit": deleted_delta_logit,
+        "full_mse_loss_diff_by_bin": full_mse_loss_diff_by_bin.tolist(),
+        # "pointwise_sq_delta_logit": pointwise_sq_delta_logit.tolist(),
+        # "pointwise_delta_logit": pointwise_delta_logit.tolist(),
+        # "deleted_delta_logit": deleted_delta_logit,
         "deleted_sq_logit_diff": deleted_sq_logit_diff,
+        "deleted_mse_loss_diff":  deleted_mse_loss_diff,
         "deleted_rho": 1.0,
     }
 
-    if cfg.model_type == "logistic":
-        summary["flip_rate_by_bin"] = flip_rate_by_bin.tolist()
-        summary["full_flip_rate_by_bin"] = full_flip_rate_by_bin.tolist()
-        summary["pointwise_flip_indicator"] = pointwise_flip_indicator.tolist()
+    # if cfg.model_type == "logistic":
+    #     summary["flip_rate_by_bin"] = flip_rate_by_bin.tolist()
+    #     summary["full_flip_rate_by_bin"] = full_flip_rate_by_bin.tolist()
+    #     summary["pointwise_flip_indicator"] = pointwise_flip_indicator.tolist()
 
     with open(out_dir / "summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
@@ -252,123 +260,45 @@ def run_experiment(cfg) -> dict:
     return summary, setting
 
 
-def run_multiple_experiments_fixed_interval(cfg, n_runs=30):
-    """
-    Runs the ripple experiment multiple times with different seeds
-    and aggregates mean/std statistics.
-    """
-    all_sq_logit_diff = []
-    all_full_sq_logit_diff = []
-    all_delta_logit = []
-    all_heatmap_rows = []
-    all_flip_rate = []
-    all_full_flip_rate = []
-    all_deleted_delta_logit = []
-    all_deleted_sq_logit_diff = []
-    all_delta_logit_var = []
+def _nan_stats(runs: list[Any]) -> dict[str, Any]:
+    data = np.asarray(runs, dtype=float)
 
-    for i in tqdm(range(n_runs)):
+    return {
+        "mean": np.nanmean(data, axis=0),
+        "std": np.nanstd(data, axis=0),
+        "stderr": np.nanstd(data, axis=0) / np.sqrt(data.shape[0]),
+        "all_runs": data,
+    }
+
+def run_multiple_experiments_fixed_interval(cfg, n_runs: int = 30):
+    """
+    Run the ripple experiment multiple times with different seeds and aggregate statistics.
+    """
+    metric_keys = {
+        "sq_logit_diff": "sq_logit_diff_by_bin",
+        "mse_loss_diff": "mse_loss_diff_by_bin",
+        "full_sq_logit_diff": "full_sq_logit_diff_by_bin",
+        "full_mse_loss_diff": "full_mse_loss_diff_by_bin",
+        "deleted_point_sq_logit_diff": "deleted_sq_logit_diff",
+        "deleted_point_mse_loss_diff": "deleted_mse_loss_diff",
+    }
+
+    runs = {name: [] for name in metric_keys}
+    setting = None
+
+    for run_idx in tqdm(range(n_runs)):
         cfg_i = deepcopy(cfg)
-        cfg_i.seed = cfg.seed + i
+        cfg_i.seed = cfg.seed + run_idx
 
         result, setting = run_experiment(cfg_i)
 
-        all_sq_logit_diff.append(result["sq_logit_diff_by_bin"])
-        all_full_sq_logit_diff.append(result["full_sq_logit_diff_by_bin"])
-        all_delta_logit.append(result["delta_logit_by_bin"])
-        all_delta_logit_var.append(result["delta_logit_var_by_bin"])
-        all_heatmap_rows.append(result["sq_logit_diff_by_bin"])
-        all_deleted_delta_logit.append(result["deleted_delta_logit"])
-        all_deleted_sq_logit_diff.append(result["deleted_sq_logit_diff"])
+        for output_name, result_key in metric_keys.items():
+            runs[output_name].append(result[result_key])
 
-        if cfg.model_type == "logistic":
-            all_flip_rate.append(result["flip_rate_by_bin"])
-            all_full_flip_rate.append(result["full_flip_rate_by_bin"])
-
-    stats = {}
-
-    all_sq_logit_diff = np.array(all_sq_logit_diff)
-    all_full_sq_logit_diff = np.array(all_full_sq_logit_diff)
-    all_delta_logit = np.array(all_delta_logit)
-    all_deleted_delta_logit = np.array(all_deleted_delta_logit, dtype=float)
-    all_deleted_sq_logit_diff = np.array(all_deleted_sq_logit_diff, dtype=float)
-    all_delta_logit_var = np.array(all_delta_logit_var)
-
-    stats["sq_logit_diff"] = {
-        "mean": np.nanmean(all_sq_logit_diff, axis=0),
-        "std": np.nanstd(all_sq_logit_diff, axis=0),
-        "stderr": np.nanstd(all_sq_logit_diff, axis=0)
-        / np.sqrt(all_sq_logit_diff.shape[0]),
-        "all_runs": all_sq_logit_diff,
+    stats = {
+        name: _nan_stats(values)
+        for name, values in runs.items()
     }
-
-    stats["deleted_point_sq_logit_diff"] = {
-        "mean": float(np.nanmean(all_deleted_sq_logit_diff)),
-        "std": float(np.nanstd(all_deleted_sq_logit_diff)),
-        "stderr": float(
-            np.nanstd(all_deleted_sq_logit_diff)
-            / np.sqrt(all_deleted_sq_logit_diff.shape[0])
-        ),
-        "all_runs": all_deleted_sq_logit_diff,
-        "rho": 1.0,
-    }
-
-    stats["deleted_point_delta_logit"] = {
-        "mean": float(np.nanmean(all_deleted_delta_logit)),
-        "std": float(np.nanstd(all_deleted_delta_logit)),
-        "stderr": float(
-            np.nanstd(all_deleted_delta_logit)
-            / np.sqrt(all_deleted_delta_logit.shape[0])
-        ),
-        "all_runs": all_deleted_delta_logit,
-        "rho": 1.0,
-    }
-
-    stats["delta_logit_var"] = {
-        "mean": np.nanmean(all_delta_logit_var, axis=0),
-        "std": np.nanstd(all_delta_logit_var, axis=0),
-        "stderr": np.nanstd(all_delta_logit_var, axis=0)
-        / np.sqrt(all_delta_logit_var.shape[0]),
-        "all_runs": all_delta_logit_var,
-    }
-
-    print(stats["sq_logit_diff"]["std"])
-
-    stats["full_sq_logit_diff"] = {
-        "mean": np.nanmean(all_full_sq_logit_diff, axis=0),
-        "std": np.nanstd(all_full_sq_logit_diff, axis=0),
-        "stderr": np.nanstd(all_full_sq_logit_diff, axis=0)
-        / np.sqrt(all_full_sq_logit_diff.shape[0]),
-        "all_runs": all_full_sq_logit_diff,
-    }
-
-    stats["delta_logit"] = {
-        "mean": np.nanmean(all_delta_logit, axis=0),
-        "std": np.nanstd(all_delta_logit, axis=0),
-        "stderr": np.nanstd(all_delta_logit, axis=0)
-        / np.sqrt(all_delta_logit.shape[0]),
-        "all_runs": all_delta_logit,
-    }
-
-    if cfg.model_type == "logistic":
-        all_flip_rate = np.array(all_flip_rate)
-        all_full_flip_rate = np.array(all_full_flip_rate)
-
-        stats["flip_rate"] = {
-            "mean": np.nanmean(all_flip_rate, axis=0),
-            "std": np.nanstd(all_flip_rate, axis=0),
-            "stderr": np.nanstd(all_flip_rate, axis=0)
-            / np.sqrt(all_flip_rate.shape[0]),
-            "all_runs": all_flip_rate,
-        }
-
-        stats["full_flip_rate"] = {
-            "mean": np.nanmean(all_full_flip_rate, axis=0),
-            "std": np.nanstd(all_full_flip_rate, axis=0),
-            "stderr": np.nanstd(all_full_flip_rate, axis=0)
-            / np.sqrt(all_full_flip_rate.shape[0]),
-            "all_runs": all_full_flip_rate,
-        }
 
     return stats, setting
 

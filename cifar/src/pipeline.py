@@ -197,31 +197,31 @@ def run_experiment(cfg: ExperimentConfig, device="cpu") -> None:
         model_path=cfg.full_model_path
     )
 
-    if cfg.teacher_model_path is not None:
-        print("calculating teacher metrics....")
-        cfg.teacher_metrics = collect_teacher_metrics(
-            unlearning_config_path=cfg.unlearning_config_path,
-            teacher_model_path=cfg.teacher_model_path,
-            dataset_name=cfg.dataset_name,
-            feature_extractor=full_model,
-            forget_dataset=forget_dataset,
-            num_classes=cfg.num_classes,
-            device=device,
-            class_to_forget=cfg.class_to_forget,
-        )
+    # if cfg.teacher_model_path is not None:
+    #     print("calculating teacher metrics....")
+    #     cfg.teacher_metrics = collect_teacher_metrics(
+    #         unlearning_config_path=cfg.unlearning_config_path,
+    #         teacher_model_path=cfg.teacher_model_path,
+    #         dataset_name=cfg.dataset_name,
+    #         feature_extractor=full_model,
+    #         forget_dataset=forget_dataset,
+    #         num_classes=cfg.num_classes,
+    #         device=device,
+    #         class_to_forget=cfg.class_to_forget,
+    #     )
 
-    ## RETRAIN MODEL ###
-    print("Evaluating retrain model accuracy...")
-    retrain_models = []
+    # ## RETRAIN MODEL ###
+    # print("Evaluating retrain model accuracy...")
+    # retrain_models = []
 
-    for retrain_model_path in cfg.retrain_model_paths:
-        retrain_model = get_cifar_resnet56(
-            dataset_name=cfg.dataset_name,
-            device=device,
-            model_path=Path(retrain_model_path),
-        )
+    # for retrain_model_path in cfg.retrain_model_paths:
+    #     retrain_model = get_cifar_resnet56(
+    #         dataset_name=cfg.dataset_name,
+    #         device=device,
+    #         model_path=Path(retrain_model_path),
+    #     )
 
-        retrain_models.append(retrain_model)
+    #     retrain_models.append(retrain_model)
 
     # UPLOADING UNLEARNED MODEL ###
     print("Evaluating unlearned model accuracy...")
@@ -236,11 +236,11 @@ def run_experiment(cfg: ExperimentConfig, device="cpu") -> None:
             device=device,
         )
     )
-    unlearned_model = get_cifar_resnet56(
-        dataset_name=cfg.dataset_name,
-        device=device,
-        model_path=Path(cfg.unlearned_model_path),
-    )
+    # unlearned_model = get_cifar_resnet56(
+    #     dataset_name=cfg.dataset_name,
+    #     device=device,
+    #     model_path=Path(cfg.unlearned_model_path),
+    # )
 
     ### SIMILARITY SOURCE ###
     print("Calculating similarity...")

@@ -37,14 +37,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = build_parser_base()
     parser.description = "AMUN unlearning"
 
-    parser.add_argument("--unlearn-method", default="amun", type=str)
+    parser.add_argument("--unlearn-method", default="advonly", type=str)
     parser.add_argument("--remain", default="use", type=str)
     parser.add_argument("--attack", default="pgdl2", type=str)
     parser.add_argument("--lr-steps", default=5, type=int)
 
     parser.set_defaults(
         unlearning_lr=0.05,
-        num_epochs=10,
+        num_epochs=20,
         unlearning_batch_size=256,
         weight_decay=5e-4,
     )

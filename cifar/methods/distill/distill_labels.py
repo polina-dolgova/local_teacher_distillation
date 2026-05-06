@@ -55,7 +55,7 @@ def _build_optimizer(
         optimizer = torch.optim.SGD(
             model.parameters(),
             lr=lr,
-            momentum=0.9,
+            momentum=weight_decay,
             weight_decay=weight_decay,
         )
 
@@ -615,6 +615,7 @@ def unlearn_one_class(
     start_time = time.time()
     extra_time = prepared["support_time"]
 
+    # for support size analytics
     if _maybe_run_support_analytics(
         n_support_analytics=n_support_analytics,
         dataset=dataset,

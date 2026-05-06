@@ -48,7 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--retain-fraction", type=float, default=1.0)
     parser.add_argument("--mask-path", type=str, default=None)
-    parser.add_argument("--mask-topk-ratio", type=float, default=0.1)
+    parser.add_argument("--mask-topk-ratio", type=float, default=0.5)
     parser.add_argument("--mask-batch-size", type=int, default=256)
     parser.add_argument("--momentum", type=float, default=0.9)
 

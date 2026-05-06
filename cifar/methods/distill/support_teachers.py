@@ -294,6 +294,7 @@ def select_support_indices(
     """
     retain_indices_full = np.asarray(retain_indices_full)
     n_support = min(n_support, len(retain_indices_full))
+    n_retain = len(retain_indices_full)
 
     threshold = None
 
@@ -309,11 +310,13 @@ def select_support_indices(
             num_workers=num_workers,
         )
 
-        order = np.argsort(-similarities)
-        selected = retain_indices_full[order[:n_support]]
+        top_pos = np.argpartition(similarities, n_retain - n_support)[-n_support:]
+        selected = retain_indices_full[top_pos]
+        
+        # just for history
+        threshold = float(similarities[top_pos].min())
 
-        threshold = float(similarities[order[n_support - 1]])
-
+    # ablations
     elif support_selection_mode == "random":
 
         np.random.seed(seed)
@@ -322,7 +325,7 @@ def select_support_indices(
             size=n_support,
             replace=False,
         )
-
+    # ablations
     elif support_selection_mode == "farthest":
 
         similarities = _compute_similarity_to_forget_center(
@@ -335,10 +338,10 @@ def select_support_indices(
             num_workers=num_workers,
         )
 
-        order = np.argsort(similarities)
-        selected = retain_indices_full[order[:n_support]]
+        top_pos = np.argpartition(similarities, n_support - 1)[:n_support]
+        selected = retain_indices_full[top_pos]
 
-        threshold = float(similarities[order[n_support - 1]])
+        threshold = float(similarities[top_pos].max())
 
     else:
         print(support_selection_mode, "is not implemented")

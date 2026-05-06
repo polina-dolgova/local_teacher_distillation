@@ -173,3 +173,158 @@ def plot_forget_class_metrics_barplot(
     plt.show()
     plt.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close()
+
+def plot_forget_class_metrics_barplot_differences(
+    summary_json_path: str | Path,
+    output_path: str | Path,
+    method_order: list[str] | None = None,
+    method_display_names: dict[str, str] | None = None,
+    retrain_key: str = "retrain"
+) -> None:
+    """
+    Plot grouped bar chart for forget-class metrics as differences from retrain.
+
+    Bars:
+        method_mean - retrain_mean
+
+    Error bars:
+        method std only
+
+    Shaded bands:
+        retrain mean ± retrain std, centered around zero after subtraction
+    """
+    summary_json_path = Path(summary_json_path)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(summary_json_path, "r", encoding="utf-8") as f:
+        summary = json.load(f)
+
+    metric_keys = [
+        "RA_forget_class",
+        "FA_forget_class",
+        "TA_forget_class",
+    ]
+    metric_labels = [
+        r"RA$_{\mathrm{affected-class}}$",
+        r"UA$_{\mathrm{affected-class}}$",
+        r"TA$_{\mathrm{affected-class}}$",
+    ]
+
+    metric_colors = [
+        "#5AA469",  # retain: soft green
+        "#B00101",  # forget/unlearning: red
+        "#024583",  # test: muted blue
+    ]
+
+    retrain_metrics = summary[retrain_key]["metrics"]
+    retrain_means = np.asarray(
+        [100.0 * retrain_metrics[key]["mean"] for key in metric_keys],
+        dtype=float,
+    )
+    retrain_stds = np.asarray(
+        [100.0 * retrain_metrics[key]["std"] for key in metric_keys],
+        dtype=float,
+    )
+
+    diff_means = []
+    method_stds = []
+    labels = []
+
+    for method in method_order:
+        # if method == retrain_key:
+        #     continue
+        if method not in summary:
+            continue
+
+        metrics = summary[method]["metrics"]
+
+        method_means = np.asarray(
+            [100.0 * metrics[key]["mean"] for key in metric_keys],
+            dtype=float,
+        )
+        method_std = np.asarray(
+            [100.0 * metrics[key]["std"] for key in metric_keys],
+            dtype=float,
+        )
+
+        diff_means.append(method_means - retrain_means)
+        method_stds.append(method_std)
+        labels.append(method_display_names.get(method, method))
+
+    diff_means = np.asarray(diff_means, dtype=float)
+    method_stds = np.asarray(method_stds, dtype=float)
+
+    num_methods = len(labels)
+    num_metrics = len(metric_keys)
+
+    x = np.arange(num_methods)
+    bar_width = 0.22
+
+    fig, ax = plt.subplots(figsize=(1.5 * num_methods + 2, 4))
+
+    for metric_idx in range(num_metrics):
+        offset = (metric_idx - 1) * bar_width
+
+        # Shaded retrain variability band for this metric.
+        # ax.axhspan(
+        #     -retrain_stds[metric_idx],
+        #     retrain_stds[metric_idx],
+        #     xmin=0.0,
+        #     xmax=1.0,
+        #     color=metric_colors[metric_idx],
+        #     alpha=0.08,
+        #     zorder=0,
+        # )
+
+        ax.bar(
+            x + offset,
+            diff_means[:, metric_idx],
+            width=bar_width,
+            yerr=method_stds[:, metric_idx],
+            capsize=3,
+            label=metric_labels[metric_idx],
+            color=metric_colors[metric_idx],
+            alpha=0.9,
+            edgecolor="black",
+            linewidth=0.6,
+            zorder=2,
+        )
+
+    ax.axhline(
+        0.0,
+        color="black",
+        linestyle="--",
+        linewidth=1.1,
+        alpha=0.8,
+        zorder=1,
+    )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=0, ha="right")
+    for tick_label in ax.get_xticklabels():
+        if tick_label.get_text() == method_display_names["distill_labels"]:
+            tick_label.set_color("#9548B2")
+            tick_label.set_fontweight("bold")
+        if tick_label.get_text() == method_display_names[retrain_key]:
+            tick_label.set_color("#C9A227")
+    ax.set_ylabel("Accuracy difference from retrain (pp)")
+    ax.set_title("Affected-Class Metrics Relative to Retrain")
+    ax.grid(axis="y", alpha=0.3, zorder=0)
+
+    y_min = np.nanmin(diff_means - method_stds)
+    y_max = np.nanmax(diff_means + method_stds)
+    band_max = np.nanmax(retrain_stds)
+
+    margin = 0.1 * max(abs(y_min), abs(y_max), band_max, 1.0)
+    ax.set_ylim(
+        min(y_min, -band_max) - margin,
+        max(y_max, band_max) + margin,
+    )
+
+    ax.legend()
+    fig.tight_layout()
+
+    #fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.show()
+    plt.close(fig)

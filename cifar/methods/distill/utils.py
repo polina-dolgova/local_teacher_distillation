@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--teacher-type",
         type=str,
-        default="small_cnn",
+        default="resnet8",
         choices=["linear_frozen", "mlp_frozen", "small_cnn", "resnet8", "resnet56"],
     )
 
@@ -42,22 +42,27 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["random", "closest", "farthest"],
     )
 
-    parser.add_argument("--n-support", type=int, default=500)
+    parser.add_argument("--n-support", type=int, default=1000)
     parser.add_argument("--k-closest", type=int, default=None)
 
     parser.add_argument("--support-batch-size", type=int, default=256)
-    parser.add_argument("--support-epochs", type=int, default=5)
-    parser.add_argument("--support-lr", type=float, default=1e-3)
+    parser.add_argument(
+        "--support-epochs",
+        type=int,
+        default=250,
+        help="Upper bound for teacher epochs number"
+        )
+    
+    parser.add_argument("--support-lr", type=float, default=0.2)
     parser.add_argument("--support-weight-decay", type=float, default=1e-4)
     parser.add_argument("--support-hidden-dim", type=int, default=256)
     parser.add_argument("--support-dropout", type=float, default=0.0)
 
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--retain-loss-weight", type=float, default=1.0)
-    parser.add_argument("--forget-loss-weight", type=float, default=1.0)
+    parser.add_argument("--forget-loss-weight", type=float, default=2.0)
 
     parser.add_argument("--num-workers", type=int, default=4)
-    parser.add_argument("--zero-forget-class-prob", action="store_true")
 
     parser.add_argument(
         "--support-selection-mode",
@@ -66,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["random", "closest", "farthest"],
     )
 
-    parser.add_argument("--teacher-accuracy-threshold", type=float, default=None)
+    parser.add_argument("--teacher-accuracy-threshold", type=float, default=0.99)
 
     parser.add_argument("--n-support-analytics", type=int, nargs="*", default=None)
     parser.add_argument("--optimizer-type", type=str, default="adamw")
@@ -76,7 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--softlabels-target-mode",
         type=str,
-        default="soft",
+        default="top3_renorm",
+        choices=["top3_renorm", "top5_renorm", "hard", "soft", "threshold_renorm"]
     )
 
     return parser

@@ -82,24 +82,25 @@ def evaluate_models_by_ripple(
 
     logits = {}
 
+    logits["retrain"] = X_test @ models["retrain"]
+
     for name, theta in models.items():
         logits[name] = X_test @ theta
 
-        losses = mse_loss(y_test, logits[name])
+        losses = np.abs(mse_loss(y_test, logits[name]) - mse_loss(y_test, logits["retrain"]))
         mean_loss, counts = aggregate_by_bin(losses, bin_idx, n_bins)
 
-        result[f"{name}_pointwise_loss"] = losses
-        result[f"{name}_mean_loss_by_bin"] = mean_loss
+        result[f"{name}_mse_loss"] = losses
+        result[f"{name}_mse_loss_by_bin"] = mean_loss
         result[f"{name}_counts_by_bin"] = counts
         result[f"{name}_logits"] = logits[name]
 
-    retrain_logits = logits["retrain"]
 
     for name in models.keys():
         if name == "retrain":
             continue
 
-        delta_logit = logits[name] - retrain_logits
+        delta_logit = logits[name] - logits["retrain"]
         sq_delta_logit = delta_logit**2
 
         var_delta_logit, _ = aggregate_var_by_bin(delta_logit, bin_idx, n_bins)
@@ -113,7 +114,7 @@ def evaluate_models_by_ripple(
         result[f"{name}_delta_logit_var_by_bin"] = var_delta_logit
 
         if task_type == "classification":
-            retrain_labels = (retrain_logits >= 0.0).astype(np.float64)
+            retrain_labels = (logits["retrain"] >= 0.0).astype(np.float64)
             model_labels = (logits[name] >= 0.0).astype(np.float64)
             flip_indicator = (model_labels != retrain_labels).astype(np.float64)
 

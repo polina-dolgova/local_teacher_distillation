@@ -28,7 +28,7 @@ from cifar.src.datasets import (
 def build_parser() -> argparse.ArgumentParser:
     parser = build_parser_base()
 
-    parser.add_argument("--alpha", type=float, default=1.0)
+    parser.add_argument("--alpha", type=float, default=2.0)
     parser.add_argument("--n-woodfisher", type=int, default=1000)
     return parser
 

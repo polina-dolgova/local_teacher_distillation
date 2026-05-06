@@ -387,7 +387,7 @@ def collect_extra_metrics(
 
         if save_plots and plots_dir is not None:
 
-            for num_bins in [5, 10, 20, 50, 100]:
+            for num_bins in [10]:
                 save_binned_similarity_vs_accuracy_drop_plot(
                     similarities=similarities,
                     pointwise_drop=pointwise_drop,

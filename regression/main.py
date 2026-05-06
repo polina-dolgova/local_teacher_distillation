@@ -14,7 +14,7 @@ from regression.src.ripple_experiment import (
     run_multiple_experiments,
     run_multiple_experiments_for_variance_plot,
 )
-
+N_RUNS = 100
 
 @dataclass
 class ExperimentConfig:
@@ -146,7 +146,6 @@ def main() -> None:
         confidence_levels=["low", "mid", "high"] if args.confidence_split else [None],
     )
 
-    N_RUNS = 100
     bin_edges = np.linspace(base_cfg.rho_min, base_cfg.rho_max, base_cfg.n_bins)
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
 
@@ -200,24 +199,6 @@ def main() -> None:
             out_path=f"{compare_dir}/sq_logit_diff_ga_vs_rl.pdf",
         )
         return
-
-    # stats_full, setting_full = run_multiple_experiments(base_cfg, n_runs=N_RUNS)
-    # plot_graphs(base_cfg, bin_centers, stats_full, setting_full)
-
-    # if base_cfg.model_type == "logistic" and base_cfg.unlearning_method == "rl":
-    #     variance_stats_full, _ = run_multiple_experiments_for_variance_plot(
-    #         base_cfg,
-    #         n_outer_runs=N_RUNS,
-    #         n_inner_unlearn_runs=args.n_inner_unlearn_runs,
-    #     )
-
-    #     plot_rl_flip_and_variance_fixed_xa(
-    #         base_cfg,
-    #         bin_centers,
-    #         variance_stats_full,
-    #         f"{base_cfg.out_dir}/rl_flip_and_variance_fixed_xa.pdf",
-    #     )
-
 
 if __name__ == "__main__":
     main()
