@@ -197,20 +197,20 @@ def run_experiment(cfg: ExperimentConfig, device="cpu") -> None:
         model_path=cfg.full_model_path
     )
 
-    # if cfg.teacher_model_path is not None:
-    #     print("calculating teacher metrics....")
-    #     cfg.teacher_metrics = collect_teacher_metrics(
-    #         unlearning_config_path=cfg.unlearning_config_path,
-    #         teacher_model_path=cfg.teacher_model_path,
-    #         dataset_name=cfg.dataset_name,
-    #         feature_extractor=full_model,
-    #         forget_dataset=forget_dataset,
-    #         num_classes=cfg.num_classes,
-    #         device=device,
-    #         class_to_forget=cfg.class_to_forget,
-    #     )
+    if cfg.teacher_model_path is not None:
+        print("calculating teacher metrics....")
+        cfg.teacher_metrics = collect_teacher_metrics(
+            unlearning_config_path=cfg.unlearning_config_path,
+            teacher_model_path=cfg.teacher_model_path,
+            dataset_name=cfg.dataset_name,
+            feature_extractor=full_model,
+            forget_dataset=forget_dataset,
+            num_classes=cfg.num_classes,
+            device=device,
+            class_to_forget=cfg.class_to_forget,
+        )
 
-    # ## RETRAIN MODEL ###
+    # ### RETRAIN MODEL ###
     # print("Evaluating retrain model accuracy...")
     # retrain_models = []
 

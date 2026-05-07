@@ -1,6 +1,6 @@
 # CIFAR Unlearning Experiments
 
-This repository contains implementations of retraining and several unlearning methods for CIFAR-10/100 with a ResNet-56 backbone.
+This repository contains implementations of retraining and several unlearning methods for CIFAR-100 with a ResNet-56 backbone.
 
 ---
 
@@ -19,13 +19,12 @@ python -m cifar.methods.distill.distill_labels \
   --num-epochs <NUM_EPOCHS> \
   --retain-loss-weight <RETAIN_WEIGHT> \
   --forget-loss-weight <FORGET_WEIGHT> \
-  --k-closest <K> \
   --unlearning-lr <LR> \
   --teacher-accuracy-threshold <THRESHOLD> \
   --support-lr <SUPPORT_LR> \
-  --optimizer-type <OPTIMIZER> \
   --softlabels-target-mode <TARGET_MODE> \
-  --save-dir <OUTPUT_DIR>
+  --save-dir <OUTPUT_DIR> \
+  --seed <SEED>
 ```
 
 ---
@@ -69,15 +68,22 @@ python -m cifar.retrain.train_resnet56_filtered \
   --dataset-name <DATASET_NAME> \
   --class-to-forget <CLASS_TO_FORGET> \
   --class-fraction-to-forget <FRACTION> \
+  --nesterov \
   --device <DEVICE> \
-  --nesterov
+  --seed <SEED>
 ```
 
 ---
 
 ## 🧠 Unlearning Methods
 
-All methods require a pretrained model via `--model-path`.
+All methods require a fully trained model via `--model-path`.
+
+---
+
+## Implementation Notes
+
+The SalUn and Fisher/WoodFisher (IU) implementations are based on the public SalUn codebase. The AMUN implementation is based on the official AMUN codebase.
 
 ---
 
@@ -91,7 +97,8 @@ python -m cifar.methods.ga \
   --class-fraction-to-forget <FRACTION> \
   --num-epochs <NUM_EPOCHS> \
   --unlearning-lr <LR> \
-  --save-dir <OUTPUT_DIR>
+  --save-dir <OUTPUT_DIR> \
+  --seed <SEED>
 ```
 
 ---
@@ -106,7 +113,8 @@ python -m cifar.methods.rl \
   --class-fraction-to-forget <FRACTION> \
   --num-epochs <NUM_EPOCHS> \
   --unlearning-lr <LR> \
-  --save-dir <OUTPUT_DIR>
+  --save-dir <OUTPUT_DIR> \
+  --seed <SEED>
 ```
 
 ---
@@ -121,7 +129,8 @@ python -m cifar.methods.ft \
   --class-fraction-to-forget <FRACTION> \
   --num-epochs <NUM_EPOCHS> \
   --unlearning-lr <LR> \
-  --save-dir <OUTPUT_DIR>
+  --save-dir <OUTPUT_DIR> \
+  --seed <SEED>
 ```
 
 ---
@@ -137,7 +146,8 @@ python -m cifar.methods.salun \
   --num-epochs <NUM_EPOCHS> \
   --unlearning-lr <LR> \
   --mask-topk-ratio <MASK_RATIO> \
-  --save-dir <OUTPUT_DIR>
+  --save-dir <OUTPUT_DIR> \
+  --seed <SEED>
 ```
 
 ---
@@ -150,7 +160,11 @@ python -m cifar.methods.amun \
   --dataset-name <DATASET_NAME> \
   --class-to-forget <CLASS_TO_FORGET> \
   --class-fraction-to-forget <FRACTION> \
-  --save-dir <OUTPUT_DIR>
+  --num-epochs <NUM_EPOCHS> \
+  --unlearning-lr <LR> \
+  --unlearn-method advonly \
+  --save-dir <OUTPUT_DIR> \
+  --seed <SEED>
 ```
 
 ---
@@ -163,7 +177,9 @@ python -m cifar.methods.fisher \
   --dataset-name <DATASET_NAME> \
   --class-to-forget <CLASS_TO_FORGET> \
   --class-fraction-to-forget <FRACTION> \
-  --save-dir <OUTPUT_DIR>
+  --alpha <ALPHA> \
+  --save-dir <OUTPUT_DIR> \
+  --seed <SEED>
 ```
 
 ---

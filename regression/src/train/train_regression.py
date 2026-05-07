@@ -27,8 +27,6 @@ def train_logistic_regression(X: np.ndarray, y: np.ndarray) -> np.ndarray:
     return model.coef_.flatten()
 
 
-
-
 def train_min_norm_on_logits(
     X: np.ndarray,
     y: np.ndarray,

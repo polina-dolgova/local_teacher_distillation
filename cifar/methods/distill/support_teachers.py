@@ -182,6 +182,96 @@ class CIFARResNet(nn.Module):
         return out
 
 
+class NeighborSoftLabeler:
+    def __init__(
+        self,
+        dataset,
+        support_indices,
+        feature_extractor: torch.nn.Module,
+        num_classes: int,
+        k_neighbors: int,
+        batch_size: int,
+        device: str,
+        num_workers: int = 0,
+    ):
+        if k_neighbors <= 0:
+            raise ValueError("k_neighbors must be positive.")
+
+        self.kind = "neighbor"
+        self.dataset = dataset
+        self.support_indices = np.asarray(support_indices)
+        self.feature_extractor = feature_extractor
+        self.num_classes = num_classes
+        self.k_neighbors = min(k_neighbors, len(self.support_indices))
+        self.device = device
+
+        self.support_features = _compute_resnet56_embeddings_for_indices(
+            dataset=dataset,
+            indices=self.support_indices,
+            model=feature_extractor,
+            device=device,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+
+        self.support_features = F.normalize(
+            self.support_features.to(device),
+            p=2,
+            dim=1,
+        )
+
+        targets = np.asarray(dataset.targets)
+        self.support_labels = torch.as_tensor(
+            targets[self.support_indices],
+            dtype=torch.long,
+            device=device,
+        )
+
+    @torch.no_grad()
+    def predict_proba(self, x_batch: torch.Tensor) -> torch.Tensor:
+        self.feature_extractor.eval()
+
+        query_features = _compute_resnet56_embeddings_for_batch(
+            x_batch=x_batch,
+            model=self.feature_extractor,
+            device=self.device,
+        )
+
+        query_features = F.normalize(query_features, p=2, dim=1)
+
+        similarities = query_features @ self.support_features.T
+
+        topk_indices = torch.topk(
+            similarities,
+            k=self.k_neighbors,
+            dim=1,
+            largest=True,
+        ).indices
+
+        neighbor_labels = self.support_labels[topk_indices]
+
+        weights = torch.full(
+            neighbor_labels.shape,
+            fill_value=1.0 / self.k_neighbors,
+            dtype=torch.float32,
+            device=self.device,
+        )
+
+        soft_targets = torch.zeros(
+            x_batch.size(0),
+            self.num_classes,
+            dtype=torch.float32,
+            device=self.device,
+        )
+
+        soft_targets.scatter_add_(
+            dim=1,
+            index=neighbor_labels,
+            src=weights,
+        )
+
+        return soft_targets
+
 def build_resnet8(num_classes: int) -> nn.Module:
     """
     CIFAR ResNet-8:
@@ -203,6 +293,20 @@ def build_resnet56(dataset_name) -> nn.Module:
 def _pin_memory_for_device(device: str) -> bool:
     return str(device).startswith("cuda")
 
+
+@torch.no_grad()
+def _compute_resnet56_embeddings_for_batch(
+    x_batch: torch.Tensor,
+    model: torch.nn.Module,
+    device: str,
+) -> torch.Tensor:
+    model.eval()
+    x_batch = x_batch.to(device)
+
+    features = extract_cifar_resnet56_penultimate(model, x_batch)
+    features = features.flatten(start_dim=1)
+
+    return features
 
 def _compute_resnet56_embeddings_for_indices(
     dataset,

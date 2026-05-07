@@ -28,6 +28,7 @@ from cifar.methods.distill.support_teachers import (
     train_support_teacher,
     predict_soft_targets_with_teacher_on_batch,
     extract_cifar_resnet56_penultimate,
+    NeighborSoftLabeler
 )
 from cifar.methods.distill.support_analytics import (
     train_support_teachers_and_measure_stability,
@@ -260,6 +261,7 @@ def _prepare_teacher(
     device: str,
     num_workers: int,
     seed: int,
+    k_neighbors=None
 ):
     teacher = None
     final_train_accuracy = None
@@ -290,7 +292,17 @@ def _prepare_teacher(
         teacher_kind = teacher.kind
 
     elif mode == "neighbor":
-        teacher_kind = "neighbor"
+        teacher = NeighborSoftLabeler(
+            dataset=dataset,
+            support_indices=support_indices,
+            feature_extractor=model,
+            num_classes=num_classes,
+            k_neighbors=k_neighbors,
+            batch_size=support_batch_size,
+            device=device,
+            num_workers=num_workers,
+        )
+        teacher_kind = teacher.kind
     else:
         raise ValueError(f"Unknown mode: {mode}")
 
@@ -374,9 +386,10 @@ def _build_online_soft_targets(
         return soft_targets
 
     if mode == "neighbor":
-        raise NotImplementedError(
-            "Online soft targets for mode='neighbor' are not implemented yet."
-        )
+        soft_targets[is_forget] = teacher.predict_proba(
+            x_batch=x[is_forget],
+        ).to(soft_targets.device)
+        return soft_targets
 
     raise ValueError(f"Unknown mode: {mode}")
 
@@ -539,7 +552,6 @@ def unlearn_one_class(
     mode: str,
     teacher_type: str,
     n_support: int,
-    k_closest: int | None,
     support_epochs: int,
     support_batch_size: int,
     support_lr: float,
@@ -561,6 +573,7 @@ def unlearn_one_class(
     optimizer_type="adamw",
     retrain_model=None,
     dataset_name: str = "cifar100",
+    k_neighbors: int | None = None,
     trunk_k=100,
 ):
     torch.manual_seed(seed)
@@ -663,24 +676,25 @@ def unlearn_one_class(
         device=device,
         num_workers=num_workers,
         seed=seed,
+        k_neighbors=k_neighbors
     )
+    if mode != "neighbor":
+        extra_time += _compute_teacher_forget_class_prediction_rate(
+            teacher=teacher,
+            forget_eval_loader=eval_loaders["forget"],
+            feature_extractor=model,
+            class_to_forget=class_to_forget,
+            device=device,
+        )
 
-    extra_time += _compute_teacher_forget_class_prediction_rate(
-        teacher=teacher,
-        forget_eval_loader=eval_loaders["forget"],
-        feature_extractor=model,
-        class_to_forget=class_to_forget,
-        device=device,
-    )
-
-    extra_time += _save_teacher_artifacts(
-        teacher=teacher,
-        teacher_kind=teacher_kind,
-        final_train_accuracy=final_train_accuracy,
-        final_epoch=final_epoch,
-        support_threshold=support_threshold,
-        output_dir=output_dir,
-    )
+        extra_time += _save_teacher_artifacts(
+            teacher=teacher,
+            teacher_kind=teacher_kind,
+            final_train_accuracy=final_train_accuracy,
+            final_epoch=final_epoch,
+            support_threshold=support_threshold,
+            output_dir=output_dir,
+        )
 
     loader = build_online_teacher_mixed_loader(
         forget_subset=forget_subset,
@@ -774,7 +788,6 @@ def main() -> None:
         mode=args.mode,
         teacher_type=args.teacher_type,
         n_support=args.n_support,
-        k_closest=args.k_closest,
         support_epochs=args.support_epochs,
         support_batch_size=args.support_batch_size,
         support_lr=args.support_lr,
@@ -797,6 +810,7 @@ def main() -> None:
         dataset_name=args.dataset_name,
         test_dataset=test_dataset,
         softlabels_target_mode=args.softlabels_target_mode,
+        k_neighbors=args.k_neighbors
     )
 
     save_config(args, output_dir)
