@@ -4,6 +4,15 @@ import json
 from pathlib import Path
 
 from cifar.src.custom_types import *
+from cifar.src.datasets import get_dataset_class_names, build_cifar_dataset
+
+
+def get_unlearning_datasets(args):
+    class_names = get_dataset_class_names(args.dataset_name)
+    num_classes = len(class_names)
+    train_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=True)
+    test_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=False)
+    return train_dataset, test_dataset, num_classes
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--dataset-name",
         type=str,
         default="cifar100",
-        choices=["cifar10", "cifar100"],
+        choices=["cifar10", "cifar100", "svhn"],
     )
     parser.add_argument("--class-to-forget", type=int, default=25)
     parser.add_argument("--class-fraction-to-forget", type=float, default=1.0)

@@ -5,7 +5,7 @@ import json
 import torch
 from torch.utils.data import DataLoader
 
-from cifar.src.models.features import extract_cifar_resnet56_penultimate
+from cifar.src.models.features import extract_cifar_resnet56_penultimate, get_feature_extractor
 from cifar.methods.distill.support_teachers import (
     SupportTeacher,
     load_support_teacher_from_checkpoint,
@@ -27,6 +27,7 @@ def _compute_teacher_accuracy(
     feature_extractor: torch.nn.Module,
     device: str,
     class_to_forget: int | None = None,
+    feature_extractor_fn=None,
 ) -> dict[str, float | int | None]:
     """
     Compute teacher accuracy on a dataset.
@@ -34,6 +35,8 @@ def _compute_teacher_accuracy(
     If class_to_forget is provided, also compute the fraction of predictions
     equal to class_to_forget.
     """
+    if feature_extractor_fn is None:
+        feature_extractor_fn = extract_cifar_resnet56_penultimate
 
     teacher.model.eval()
     if teacher.kind == "embedding":
@@ -49,7 +52,7 @@ def _compute_teacher_accuracy(
             y = y.to(device)
 
             if teacher.kind == "embedding":
-                features = extract_cifar_resnet56_penultimate(feature_extractor, x)
+                features = feature_extractor_fn(feature_extractor, x)
                 logits = teacher.model(features)
             elif teacher.kind == "image":
                 logits = teacher.model(x)
@@ -85,6 +88,7 @@ def collect_teacher_metrics(
     device: str,
     class_to_forget: int | None = None,
 ) -> dict:
+    feature_extractor_fn = get_feature_extractor(dataset_name)
     """
     Load teacher model from checkpoint and compute metrics on D_f.
     """
@@ -121,6 +125,7 @@ def collect_teacher_metrics(
         feature_extractor=feature_extractor,
         device=device,
         class_to_forget=class_to_forget,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     return {

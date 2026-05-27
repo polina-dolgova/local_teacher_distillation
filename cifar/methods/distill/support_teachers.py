@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,6 +12,14 @@ from tqdm import tqdm
 from pathlib import Path
 
 from cifar.src.models.features import extract_cifar_resnet56_penultimate
+
+
+def _get_targets(dataset) -> np.ndarray:
+    if hasattr(dataset, "targets"):
+        return np.asarray(dataset.targets)
+    if hasattr(dataset, "labels"):
+        return np.asarray(dataset.labels)
+    return np.array([int(y) for _, y in dataset])
 
 
 @dataclass
@@ -193,6 +202,7 @@ class NeighborSoftLabeler:
         batch_size: int,
         device: str,
         num_workers: int = 0,
+        feature_extractor_fn=None,
     ):
         if k_neighbors <= 0:
             raise ValueError("k_neighbors must be positive.")
@@ -201,6 +211,7 @@ class NeighborSoftLabeler:
         self.dataset = dataset
         self.support_indices = np.asarray(support_indices)
         self.feature_extractor = feature_extractor
+        self.feature_extractor_fn = feature_extractor_fn or extract_cifar_resnet56_penultimate
         self.num_classes = num_classes
         self.k_neighbors = min(k_neighbors, len(self.support_indices))
         self.device = device
@@ -212,6 +223,7 @@ class NeighborSoftLabeler:
             device=device,
             batch_size=batch_size,
             num_workers=num_workers,
+            feature_extractor_fn=self.feature_extractor_fn,
         )
 
         self.support_features = F.normalize(
@@ -220,7 +232,7 @@ class NeighborSoftLabeler:
             dim=1,
         )
 
-        targets = np.asarray(dataset.targets)
+        targets = _get_targets(dataset)
         self.support_labels = torch.as_tensor(
             targets[self.support_indices],
             dtype=torch.long,
@@ -235,6 +247,7 @@ class NeighborSoftLabeler:
             x_batch=x_batch,
             model=self.feature_extractor,
             device=self.device,
+            feature_extractor_fn=self.feature_extractor_fn,
         )
 
         query_features = F.normalize(query_features, p=2, dim=1)
@@ -299,11 +312,14 @@ def _compute_resnet56_embeddings_for_batch(
     x_batch: torch.Tensor,
     model: torch.nn.Module,
     device: str,
+    feature_extractor_fn=None,
 ) -> torch.Tensor:
+    if feature_extractor_fn is None:
+        feature_extractor_fn = extract_cifar_resnet56_penultimate
     model.eval()
     x_batch = x_batch.to(device)
 
-    features = extract_cifar_resnet56_penultimate(model, x_batch)
+    features = feature_extractor_fn(model, x_batch)
     features = features.flatten(start_dim=1)
 
     return features
@@ -315,7 +331,10 @@ def _compute_resnet56_embeddings_for_indices(
     device: str = "cpu",
     batch_size: int = 256,
     num_workers: int = 0,
+    feature_extractor_fn=None,
 ) -> torch.Tensor:
+    if feature_extractor_fn is None:
+        feature_extractor_fn = extract_cifar_resnet56_penultimate
 
     subset = Subset(dataset, indices)
     loader = DataLoader(
@@ -332,7 +351,7 @@ def _compute_resnet56_embeddings_for_indices(
     with torch.no_grad():
         for x, _ in loader:
             x = x.to(device)
-            emb = extract_cifar_resnet56_penultimate(model, x)
+            emb = feature_extractor_fn(model, x)
             all_embeddings.append(emb.cpu())
 
     if not all_embeddings:
@@ -349,6 +368,7 @@ def _compute_similarity_to_forget_center(
     device: str = "cpu",
     batch_size: int = 256,
     num_workers: int = 0,
+    feature_extractor_fn=None,
 ) -> np.ndarray:
     candidate_embeddings = _compute_resnet56_embeddings_for_indices(
         dataset=dataset,
@@ -357,6 +377,7 @@ def _compute_similarity_to_forget_center(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
     forget_embeddings = _compute_resnet56_embeddings_for_indices(
         dataset=dataset,
@@ -365,6 +386,7 @@ def _compute_similarity_to_forget_center(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     if candidate_embeddings.shape[0] == 0:
@@ -392,6 +414,7 @@ def select_support_indices(
     batch_size: int = 256,
     num_workers: int = 0,
     seed: int = 42,
+    feature_extractor_fn=None,
 ) -> np.ndarray:
     """
     Select support samples as the closest retain samples to the forget-set center.
@@ -412,11 +435,12 @@ def select_support_indices(
             device=device,
             batch_size=batch_size,
             num_workers=num_workers,
+            feature_extractor_fn=feature_extractor_fn,
         )
 
         top_pos = np.argpartition(similarities, n_retain - n_support)[-n_support:]
         selected = retain_indices_full[top_pos]
-        
+
         # just for history
         threshold = float(similarities[top_pos].min())
 
@@ -440,6 +464,7 @@ def select_support_indices(
             device=device,
             batch_size=batch_size,
             num_workers=num_workers,
+            feature_extractor_fn=feature_extractor_fn,
         )
 
         top_pos = np.argpartition(similarities, n_support - 1)[:n_support]
@@ -493,9 +518,19 @@ def _build_teacher_model(
     if teacher_type == "resnet56":
         return build_resnet56(dataset_name=dataset_name), "image"
 
+    if teacher_type == "shallow_vit":
+        return timm.create_model(
+            "vit_tiny_patch16_224",
+            pretrained=False,
+            num_classes=num_classes,
+            img_size=32,
+            patch_size=4,
+            depth=4,
+        ), "image"
+
     raise ValueError(
         f"Unknown teacher_type: {teacher_type}. "
-        "Expected one of ['linear_frozen', 'mlp_frozen', 'small_cnn', 'resnet8', 'resnet56']."
+        "Expected one of ['linear_frozen', 'mlp_frozen', 'small_cnn', 'resnet8', 'resnet56', 'shallow_vit']."
     )
 
 
@@ -552,7 +587,7 @@ def get_train_dataset(
         )
         embedding_dim = int(support_embeddings.shape[1])
 
-        targets = np.asarray(dataset.targets)
+        targets = _get_targets(dataset)
         support_labels = torch.tensor(targets[support_indices], dtype=torch.long)
 
         train_dataset = TensorDataset(support_embeddings, support_labels)
@@ -655,26 +690,21 @@ def train_support_teacher(
         generator=g,
     )
 
-    # print(f"optimizer: {optimizer_type}")
-    # if optimizer_type == "adamw":
-    #     optimizer = torch.optim.AdamW(
-    #         teacher_model.parameters(),
-    #         lr=lr,
-    #         weight_decay=weight_decay,
-    #     )
-    # else:
-    optimizer = torch.optim.SGD(
-        teacher_model.parameters(),
-        lr=lr,
-        momentum=0.9,
-        weight_decay=weight_decay,
-    )
-
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer,
-        step_size=200,
-        gamma=0.1,
-    )
+    if teacher_type == "shallow_vit":
+        optimizer = torch.optim.AdamW(
+            teacher_model.parameters(),
+            lr=lr,
+            weight_decay=weight_decay,
+        )
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=0.0)
+    else:
+        optimizer = torch.optim.SGD(
+            teacher_model.parameters(),
+            lr=lr,
+            momentum=0.9,
+            weight_decay=weight_decay,
+        )
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
     criterion = nn.CrossEntropyLoss()
 
     for epoch in range(epochs):
@@ -884,7 +914,7 @@ def build_neighbor_soft_targets(
     forget_features = F.normalize(forget_features, p=2, dim=1)
     support_features = F.normalize(support_features, p=2, dim=1)
 
-    targets = np.asarray(dataset.targets)
+    targets = _get_targets(dataset)
     support_labels = torch.tensor(targets[support_indices], dtype=torch.long)
 
     k_neighbors = min(k_neighbors, len(support_indices))

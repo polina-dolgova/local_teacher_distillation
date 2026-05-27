@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, Subset
 
 from cifar.src.datasets import split_indices_by_forget_class
@@ -105,7 +104,6 @@ def build_random_mixed_loader(
     random_label_mode="any",
     batch_size=64,
     num_workers=4,
-    device="cpu",
     seed=42,
 ) -> DataLoader:
     relabeled_forget_dataset = make_relabeled_forget_dataset(
@@ -122,30 +120,6 @@ def build_random_mixed_loader(
         shuffle=True,
         pin_memory=True,
     )
-
-
-def get_subsets(
-    dataset,
-    class_to_forget,
-    class_fraction_to_forget: float = 1.0,
-    retain_fraction=1.0,
-    seed=42,
-):
-    forget_indices, retain_indices = split_indices_by_forget_class(
-        dataset, class_to_forget, class_fraction_to_forget=class_fraction_to_forget
-    )
-    if retain_fraction < 1.0:
-        np.random.seed(seed)
-        retain_indices = np.random.choice(
-            retain_indices,
-            size=int(len(retain_indices) * retain_fraction),
-            replace=False,
-        )
-
-    retain_subset = Subset(dataset, retain_indices)
-    forget_subset = Subset(dataset, forget_indices)
-
-    return retain_subset, forget_subset
 
 
 class SoftRelabeledSubsetDataset(Dataset):
@@ -309,7 +283,7 @@ def build_eval_loaders(
     )
 
     retain_same_class_indices = [
-        i for i, (x, y) in enumerate(retain_subset) if y == class_to_forget
+        i for i, (_, y) in enumerate(retain_subset) if y == class_to_forget
     ]
 
     retain_same_class_dataset = Subset(retain_subset, retain_same_class_indices)
@@ -332,7 +306,7 @@ def build_eval_loaders(
         )
 
         test_same_class_indices = [
-            i for i, (x, y) in enumerate(test_dataset) if y == class_to_forget
+            i for i, (_, y) in enumerate(test_dataset) if y == class_to_forget
         ]
 
         test_same_class_dataset = Subset(test_dataset, test_same_class_indices)
@@ -379,7 +353,6 @@ class FlaggedSubsetDataset(Dataset):
 def build_online_teacher_mixed_loader(
     forget_subset,
     retain_subset,
-    class_to_forget: int,
     batch_size: int = 64,
     num_workers: int = 2,
     seed: int = 42,

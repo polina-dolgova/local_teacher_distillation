@@ -24,6 +24,8 @@ def get_dataset_class_names(dataset_name: DatasetName) -> list[str]:
             train=False,
             download=True,
         ).classes
+    if dataset_name == "svhn":
+        return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
     raise ValueError(f"Unknown dataset_name: {dataset_name}")
 
 
@@ -46,6 +48,13 @@ def get_dataset_info(dataset_name: DatasetName):
             "std": (0.2673, 0.2564, 0.2761),
             "dataset_cls": datasets.CIFAR100,
         }
+    if dataset_name == "svhn":
+        return {
+            "num_classes": 10,
+            "mean": (0.4377, 0.4438, 0.4728),
+            "std": (0.1980, 0.2010, 0.1970),
+            "dataset_cls": datasets.SVHN,
+        }
     raise ValueError(f"Unsupported dataset_name: {dataset_name}")
 
 
@@ -57,21 +66,43 @@ def build_transforms(
     std = info["std"]
     dataset_cls = info["dataset_cls"]
 
-    train_transform = transforms.Compose(
-        [
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std),
-        ]
-    )
-    test_transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std),
-        ]
-    )
+    normalize = transforms.Normalize(mean=mean, std=std)
+
+    if dataset_name == "svhn":
+        # SVHN images are already tightly cropped; no spatial augmentation needed.
+        train_transform = transforms.Compose([transforms.ToTensor(), normalize])
+        test_transform = transforms.Compose([transforms.ToTensor(), normalize])
+    else:
+        train_transform = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
+        test_transform = transforms.Compose([transforms.ToTensor(), normalize])
+
     return train_transform, test_transform, dataset_cls
+
+
+def _make_dataset(dataset_name: DatasetName, dataset_cls, train: bool, transform):
+    if dataset_name in ("cifar10", "cifar100"):
+        return dataset_cls(
+            root="./data",
+            train=train,
+            download=True,
+            transform=transform,
+        )
+    elif dataset_name == "svhn":
+        return dataset_cls(
+            root="./data",
+            split="train" if train else "test",
+            download=True,
+            transform=transform,
+        )
+    else:
+        raise NotImplementedError(f"Dataset '{dataset_name}' is not supported.")
 
 
 def build_cifar_dataset(
@@ -87,12 +118,7 @@ def build_cifar_dataset(
     else:
         transform = test_transform
 
-    dataset = dataset_cls(
-        root="./data",
-        train=train,
-        download=True,
-        transform=transform,
-    )
+    dataset = _make_dataset(dataset_name, dataset_cls, train, transform)
 
     if selected_classes is not None:
         dataset = get_class_subset(dataset, selected_classes=selected_classes)
@@ -116,19 +142,9 @@ def build_cifar_dataset_for_imagenet_backbone(
         ]
     )
 
-    if dataset_name == "cifar10":
-        dataset_cls = datasets.CIFAR10
-    elif dataset_name == "cifar100":
-        dataset_cls = datasets.CIFAR100
-    else:
-        raise ValueError(f"Unknown dataset_name: {dataset_name}")
-
-    return dataset_cls(
-        root="./data",
-        train=train,
-        download=True,
-        transform=transform,
-    )
+    info = get_dataset_info(dataset_name)
+    dataset_cls = info["dataset_cls"]
+    return _make_dataset(dataset_name, dataset_cls, train, transform)
 
 
 def split_indices_by_forget_class(

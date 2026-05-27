@@ -8,7 +8,8 @@ from cifar.src.datasets import (
     build_cifar_dataset,
     split_indices_by_forget_class,
 )
-from cifar.src.models.backbones import get_cifar_resnet56
+from cifar.src.models.backbones import get_model
+from cifar.src.models.features import get_feature_extractor
 from cifar.src.evaluation.accuracy import compute_per_class_accuracy
 from cifar.src.evaluation.similarity import (
     compute_cosine_similarity_to_forget_class,
@@ -41,7 +42,7 @@ def evaluate_model_accuracy(
     device="cpu",
 ) -> None:
 
-    model = get_cifar_resnet56(
+    model = get_model(
         dataset_name=cfg.dataset_name, device=device, model_path=model_path
     )
 
@@ -122,12 +123,14 @@ def compute_class_mean_embeddings(
         )
 
     elif cfg.similarity_source == "full_model":
+        feature_extractor_fn = get_feature_extractor(cfg.dataset_name)
         class_mean_embeddings_retain = compute_full_model_class_mean_embeddings_cifar(
             model=full_model,
             dataset=retain_dataset,
             num_classes=cfg.num_classes,
             selected_classes=cfg.selected_classes,
             device=device,
+            feature_extractor_fn=feature_extractor_fn,
         )
         class_mean_embeddings_forget = compute_full_model_class_mean_embeddings_cifar(
             model=full_model,
@@ -135,6 +138,7 @@ def compute_class_mean_embeddings(
             num_classes=cfg.num_classes,
             selected_classes=[cfg.class_to_forget],
             device=device,
+            feature_extractor_fn=feature_extractor_fn,
         )
         similarity_xlabel = "Cosine similarity to forget class (full model embedding)"
 
@@ -191,10 +195,10 @@ def run_experiment(cfg: ExperimentConfig, device="cpu") -> None:
     test_dataset = build_cifar_dataset(dataset_name=cfg.dataset_name, train=False)
     ## FULLY TRAINED MODEL ###
     print("Evaluating full model accuracy...")
-    full_model = get_cifar_resnet56(
+    full_model = get_model(
         dataset_name=cfg.dataset_name,
         device=device,
-        model_path=cfg.full_model_path
+        model_path=cfg.full_model_path,
     )
 
     if cfg.teacher_model_path is not None:

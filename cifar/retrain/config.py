@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
 
-DatasetName = Literal["cifar10", "cifar100"]
+DatasetName = Literal["cifar10", "cifar100", "svhn"]
 
 
 @dataclass
@@ -12,6 +12,7 @@ class TrainConfig:
     save_dir: str
     data_root: str = "./data"
     dataset_name: DatasetName = "cifar10"
+    model_name: str = "resnet56"
     class_to_forget: int = 0
     class_fraction_to_forget: float = 0.1
 

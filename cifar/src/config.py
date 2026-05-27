@@ -92,7 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--dataset-name",
         type=str,
         default="cifar100",
-        choices=["cifar10", "cifar100"],
+        choices=["cifar10", "cifar100", "svhn"],
         help="Dataset to use.",
     )
     parser.add_argument(

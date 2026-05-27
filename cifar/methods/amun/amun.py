@@ -28,7 +28,7 @@ from cifar.src.datasets import (
     split_indices_by_forget_class,
     build_cifar_dataset,
 )
-from cifar.src.models.backbones import get_cifar_resnet56
+from cifar.src.models.backbones import get_model
 from cifar.src.utils import get_default_device
 from cifar.methods.dataloaders import build_separate_dataloaders, build_eval_loaders
 
@@ -60,17 +60,29 @@ def get_official_transforms(dataset_name: DatasetName):
         mean = (0.5071, 0.4867, 0.4408)
         std = (0.2675, 0.2565, 0.2761)
         dataset_cls = torchvision.datasets.CIFAR100
+    elif dataset_name == "svhn":
+        mean = (0.4377, 0.4438, 0.4728)
+        std = (0.1980, 0.2010, 0.1970)
+        dataset_cls = torchvision.datasets.SVHN
     else:
         raise ValueError(f"Unsupported dataset_name: {dataset_name}")
 
-    transform_train = transforms.Compose(
-        [
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean, std),
-        ]
-    )
+    if dataset_name == "svhn":
+        transform_train = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std),
+            ]
+        )
+    else:
+        transform_train = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std),
+            ]
+        )
     transform_test = transforms.Compose(
         [
             transforms.ToTensor(),
@@ -89,24 +101,14 @@ def get_unlearning_datasets(args):
         args.dataset_name
     )
 
-    trainset = dataset_cls(
-        root="./data",
-        train=True,
-        download=True,
-        transform=transform_train,
-    )
-    trainset_clean = dataset_cls(
-        root="./data",
-        train=True,
-        download=True,
-        transform=transform_test,
-    )
-    testset = dataset_cls(
-        root="./data",
-        train=False,
-        download=True,
-        transform=transform_test,
-    )
+    if args.dataset_name == "svhn":
+        trainset = dataset_cls(root="./data", split="train", download=True, transform=transform_train)
+        trainset_clean = dataset_cls(root="./data", split="train", download=True, transform=transform_test)
+        testset = dataset_cls(root="./data", split="test", download=True, transform=transform_test)
+    else:
+        trainset = dataset_cls(root="./data", train=True, download=True, transform=transform_train)
+        trainset_clean = dataset_cls(root="./data", train=True, download=True, transform=transform_test)
+        testset = dataset_cls(root="./data", train=False, download=True, transform=transform_test)
     return trainset, trainset_clean, testset, num_classes
 
 
@@ -230,7 +232,7 @@ def main() -> None:
     if args.unlearn_method == "advonly":
         trainset = trainset_filtered
 
-    net = get_cifar_resnet56(
+    net = get_model(
         dataset_name=args.dataset_name, device=args.device, model_path=args.model_path
     )
     net = net.to(device)

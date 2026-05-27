@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from typing import Callable
 
 from cifar.src.custom_types import *
 from cifar.src.models.backbones import get_imagenet_resnet18
@@ -67,13 +68,16 @@ def compute_full_model_class_mean_embeddings_cifar(
     device: str = "cpu",
     batch_size: int = 256,
     selected_classes: list[int] | None = None,
+    feature_extractor_fn: Callable | None = None,
 ) -> torch.Tensor:
     """
-    Compute class-mean embeddings for CIFAR-10 using the full CIFAR-10 pretrained ResNet-56.
+    Compute class-mean penultimate embeddings using the full trained model.
 
     Returns:
-        Tensor of shape [10, D]
+        Tensor of shape [num_classes, D]
     """
+    if feature_extractor_fn is None:
+        feature_extractor_fn = extract_cifar_resnet56_penultimate
 
     loader = DataLoader(
         dataset,
@@ -93,7 +97,7 @@ def compute_full_model_class_mean_embeddings_cifar(
             x = x.to(device)
             y = y.to(device)
 
-            emb = extract_cifar_resnet56_penultimate(model, x)
+            emb = feature_extractor_fn(model, x)
             embedding_dim = emb.shape[1]
 
             for cls in selected_classes:

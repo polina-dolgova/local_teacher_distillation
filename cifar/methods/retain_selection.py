@@ -21,13 +21,17 @@ def _compute_resnet56_embeddings_for_indices(
     device: str = "cpu",
     batch_size: int = 256,
     num_workers: int = 0,
+    feature_extractor_fn=None,
 ) -> torch.Tensor:
     """
-    Compute penultimate ResNet-56 embeddings for the given dataset indices.
+    Compute penultimate embeddings for the given dataset indices.
 
     Returns:
         Tensor of shape [len(indices), dim]
     """
+    if feature_extractor_fn is None:
+        feature_extractor_fn = extract_cifar_resnet56_penultimate
+
     subset = Subset(dataset, indices)
     loader = DataLoader(
         subset,
@@ -43,7 +47,7 @@ def _compute_resnet56_embeddings_for_indices(
     with torch.no_grad():
         for x, _ in loader:
             x = x.to(device)
-            emb = extract_cifar_resnet56_penultimate(model, x)
+            emb = feature_extractor_fn(model, x)
             all_embeddings.append(emb.cpu())
 
     if not all_embeddings:
@@ -60,6 +64,7 @@ def _compute_similarity_to_forget_class(
     device: str = "cpu",
     batch_size: int = 256,
     num_workers: int = 0,
+    feature_extractor_fn=None,
 ) -> np.ndarray:
     """
     Compute cosine similarity of each retain point to the mean embedding
@@ -75,6 +80,7 @@ def _compute_similarity_to_forget_class(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
     forget_embeddings = _compute_resnet56_embeddings_for_indices(
         dataset=dataset,
@@ -83,6 +89,7 @@ def _compute_similarity_to_forget_class(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     if retain_embeddings.shape[0] == 0:
@@ -125,6 +132,7 @@ def _sample_retain_indices_by_similarity(
     device: str = "cpu",
     batch_size: int = 256,
     num_workers: int = 0,
+    feature_extractor_fn=None,
 ) -> np.ndarray:
     """
     Select retain points by cosine similarity to the forget-class center.
@@ -143,6 +151,7 @@ def _sample_retain_indices_by_similarity(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     if mode == "closest":
@@ -167,6 +176,7 @@ def select_retain_indices(
     device: str = "cpu",
     batch_size: int = 256,
     num_workers: int = 0,
+    feature_extractor_fn=None,
 ) -> np.ndarray:
     """
     Select a subset of retain indices according to the specified mode.
@@ -204,6 +214,7 @@ def select_retain_indices(
             device=device,
             batch_size=batch_size,
             num_workers=num_workers,
+            feature_extractor_fn=feature_extractor_fn,
         )
 
     raise ValueError(
@@ -223,6 +234,7 @@ def get_subsets(
     device: str = "cpu",
     batch_size: int = 256,
     num_workers: int = 0,
+    feature_extractor_fn=None,
 ):
     """
     Split dataset into retain and forget subsets.
@@ -249,6 +261,7 @@ def get_subsets(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     # targets = np.asarray(dataset.targets)

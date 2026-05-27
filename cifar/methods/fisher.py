@@ -1,28 +1,23 @@
 import torch
-from torch.autograd import grad
-from tqdm import tqdm
-import time
 import torch.nn.functional as F
-import torch
+from torch.autograd import grad
 from copy import deepcopy
 from tqdm import tqdm
+import time
 import argparse
 
 from cifar.src.custom_types import *
 from cifar.src.utils import get_default_device
-from cifar.src.models.backbones import get_cifar_resnet56
+from cifar.src.models.backbones import get_model
 from cifar.methods.utils import (
     build_parser as build_parser_base,
     resolve_output_dir,
     save_config,
     save_model,
     compute_eval_accuracy,
+    get_unlearning_datasets,
 )
 from cifar.methods.dataloaders import build_separate_dataloaders, build_eval_loaders
-from cifar.src.datasets import (
-    get_dataset_class_names,
-    build_cifar_dataset,
-)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,16 +26,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--alpha", type=float, default=2.0)
     parser.add_argument("--n-woodfisher", type=int, default=1000)
     return parser
-
-
-def get_unlearning_datasets(args):
-    class_names = get_dataset_class_names(args.dataset_name)
-    num_classes = len(class_names)
-
-    train_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=True)
-    test_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=False)
-
-    return train_dataset, test_dataset, num_classes
 
 
 def get_require_grad_params(model: torch.nn.Module, named=False):
@@ -265,7 +250,7 @@ def main() -> None:
     train_dataset, test_dataset, num_classes = get_unlearning_datasets(args)
 
     ### MODEL SETUP ###
-    model = get_cifar_resnet56(
+    model = get_model(
         dataset_name=args.dataset_name, device=args.device, model_path=args.model_path
     )
 

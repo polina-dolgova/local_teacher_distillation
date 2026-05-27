@@ -5,18 +5,16 @@ from copy import deepcopy
 from tqdm import tqdm
 
 from cifar.src.custom_types import *
-from cifar.src.datasets import (
-    get_dataset_class_names,
-    build_cifar_dataset,
-)
+from cifar.src.datasets import build_cifar_dataset
 from cifar.src.utils import get_default_device
-from cifar.src.models.backbones import get_cifar_resnet56
+from cifar.src.models.backbones import get_model
 from cifar.methods.utils import (
     build_parser,
     resolve_output_dir,
     save_config,
     save_model,
     compute_eval_accuracy,
+    get_unlearning_datasets,
 )
 from cifar.methods.dataloaders import build_separate_dataloaders, build_eval_loaders
 
@@ -105,16 +103,6 @@ def unlearn_one_class(
     return unlearned_model
 
 
-def get_unlearning_datasets(args):
-    class_names = get_dataset_class_names(args.dataset_name)
-    num_classes = len(class_names)
-
-    train_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=True)
-    test_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=False)
-
-    return train_dataset, test_dataset, num_classes
-
-
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -130,7 +118,7 @@ def main() -> None:
     )
 
     ### MODEL SETUP ###
-    model = get_cifar_resnet56(
+    model = get_model(
         dataset_name=args.dataset_name, device=args.device, model_path=args.model_path
     )
 

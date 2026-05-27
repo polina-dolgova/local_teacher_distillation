@@ -31,7 +31,7 @@
             "--teacher-type",
             type=str,
             default="resnet8",
-            choices=["linear_frozen", "mlp_frozen", "small_cnn", "resnet8", "resnet56"],
+            choices=["linear_frozen", "mlp_frozen", "small_cnn", "resnet8", "resnet56", "shallow_vit"],
         )
 
         parser.add_argument("--retain-fraction", type=float, default=1.0)

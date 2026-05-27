@@ -8,7 +8,8 @@ import torch.nn.functional as F
 
 from cifar.src.custom_types import *
 from cifar.src.datasets import split_indices_by_forget_class
-from cifar.src.models.backbones import get_cifar_resnet56
+from cifar.src.models.backbones import get_model
+from cifar.src.models.features import get_feature_extractor
 from cifar.src.utils import get_default_device
 from cifar.methods.utils import (
     resolve_output_dir,
@@ -79,6 +80,7 @@ def _prepare_subsets_and_support(
     num_workers: int,
     device: str,
     seed: int,
+    feature_extractor_fn=None,
 ):
     forget_indices, retain_indices_full = split_indices_by_forget_class(
         dataset,
@@ -97,6 +99,7 @@ def _prepare_subsets_and_support(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     retain_subset_clean, forget_subset_clean = get_subsets(
@@ -110,6 +113,7 @@ def _prepare_subsets_and_support(
         device=device,
         batch_size=batch_size,
         num_workers=num_workers,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     start_time = time.time()
@@ -124,6 +128,7 @@ def _prepare_subsets_and_support(
         batch_size=support_batch_size,
         num_workers=num_workers,
         seed=seed,
+        feature_extractor_fn=feature_extractor_fn,
     )
     support_time = time.time() - start_time
 
@@ -261,7 +266,8 @@ def _prepare_teacher(
     device: str,
     num_workers: int,
     seed: int,
-    k_neighbors=None
+    k_neighbors=None,
+    feature_extractor_fn=None,
 ):
     teacher = None
     final_train_accuracy = None
@@ -301,6 +307,7 @@ def _prepare_teacher(
             batch_size=support_batch_size,
             device=device,
             num_workers=num_workers,
+            feature_extractor_fn=feature_extractor_fn,
         )
         teacher_kind = teacher.kind
     else:
@@ -578,6 +585,8 @@ def unlearn_one_class(
 ):
     torch.manual_seed(seed)
 
+    feature_extractor_fn = get_feature_extractor(dataset_name)
+
     prepared = _prepare_subsets_and_support(
         model=model,
         dataset=dataset,
@@ -593,6 +602,7 @@ def unlearn_one_class(
         num_workers=num_workers,
         device=device,
         seed=seed,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     # for unlearning
@@ -676,6 +686,7 @@ def unlearn_one_class(
         device=device,
         num_workers=num_workers,
         seed=seed,
+        feature_extractor_fn=feature_extractor_fn,
         k_neighbors=k_neighbors
     )
     if mode != "neighbor":
@@ -699,7 +710,6 @@ def unlearn_one_class(
     loader = build_online_teacher_mixed_loader(
         forget_subset=forget_subset,
         retain_subset=retain_subset,
-        class_to_forget=class_to_forget,
         batch_size=batch_size,
         num_workers=num_workers,
         seed=seed,
@@ -740,7 +750,7 @@ def _load_retrain_model_if_needed(args, device: str):
     if args.n_support_analytics is None or args.retrain_model_path is None:
         return None
 
-    retrain_model = get_cifar_resnet56(
+    retrain_model = get_model(
         dataset_name=args.dataset_name,
         device=device,
         model_path=args.retrain_model_path,
@@ -764,7 +774,7 @@ def main() -> None:
         get_unlearning_datasets(args)
     )
 
-    model = get_cifar_resnet56(
+    model = get_model(
         dataset_name=args.dataset_name,
         device=args.device,
         model_path=args.model_path,

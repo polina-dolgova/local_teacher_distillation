@@ -17,6 +17,7 @@ from cifar.methods.utils import (
     seed_everything,
     resolve_output_dir,
     compute_eval_accuracy,
+    get_unlearning_datasets,
 )
 from cifar.methods.dataloaders import (
     build_random_mixed_loader,
@@ -27,10 +28,9 @@ from cifar.methods.retain_selection import get_subsets
 
 from cifar.src.datasets import (
     build_cifar_dataset,
-    get_dataset_class_names,
     split_indices_by_forget_class,
 )
-from cifar.src.models.backbones import get_cifar_resnet56
+from cifar.src.models.backbones import get_model
 from cifar.src.utils import get_default_device
 from cifar.src.custom_types import *
 
@@ -284,7 +284,6 @@ def unlearn_one_class_salun(
             random_label_mode=random_label_mode,
             batch_size=batch_size,
             num_workers=num_workers,
-            device=device,
             seed=epoch + seed,
         )
         for image, target in forget_loader:
@@ -342,16 +341,12 @@ def main():
 
     output_dir = resolve_output_dir(args)
 
-    class_names = get_dataset_class_names(args.dataset_name)
-    num_classes = len(class_names)
-
-    train_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=True)
-    test_dataset = build_cifar_dataset(dataset_name=args.dataset_name, train=False)
+    train_dataset, test_dataset, num_classes = get_unlearning_datasets(args)
     train_dataset_clean = build_cifar_dataset(
         dataset_name=args.dataset_name, train=True, do_transforms=False
     )
 
-    model = get_cifar_resnet56(
+    model = get_model(
         dataset_name=args.dataset_name, device=args.device, model_path=args.model_path
     )
 

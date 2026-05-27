@@ -22,6 +22,13 @@ def get_dataset_info(dataset_name: DatasetName) -> dict[str, Any]:
             "std": (0.2673, 0.2564, 0.2761),
             "dataset_cls": datasets.CIFAR100,
         }
+    if dataset_name == "svhn":
+        return {
+            "num_classes": 10,
+            "mean": (0.4377, 0.4438, 0.4728),
+            "std": (0.1980, 0.2010, 0.1970),
+            "dataset_cls": datasets.SVHN,
+        }
     raise ValueError(f"Unsupported dataset_name: {dataset_name}")
 
 
@@ -32,20 +39,22 @@ def build_transforms(
     mean = info["mean"]
     std = info["std"]
 
-    train_transform = transforms.Compose(
-        [
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std),
-        ]
-    )
-    test_transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std),
-        ]
-    )
+    normalize = transforms.Normalize(mean=mean, std=std)
+
+    if dataset_name == "svhn":
+        train_transform = transforms.Compose([transforms.ToTensor(), normalize])
+        test_transform = transforms.Compose([transforms.ToTensor(), normalize])
+    else:
+        train_transform = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
+        test_transform = transforms.Compose([transforms.ToTensor(), normalize])
+
     return train_transform, test_transform
 
 
@@ -95,6 +104,20 @@ def split_indices_by_forget_class(
     return forget_indices_in_forget, retain_indices
 
 
+def _make_dataset(dataset_name: DatasetName, dataset_cls, data_root: str, train: bool, transform):
+    if dataset_name in ("cifar10", "cifar100"):
+        return dataset_cls(root=data_root, train=train, download=True, transform=transform)
+    elif dataset_name == "svhn":
+        return dataset_cls(
+            root=data_root,
+            split="train" if train else "test",
+            download=True,
+            transform=transform,
+        )
+    else:
+        raise NotImplementedError(f"Dataset '{dataset_name}' is not supported.")
+
+
 def build_dataloaders(
     config: TrainConfig,
 ) -> tuple[DataLoader, DataLoader, list[int], list[int], int]:
@@ -104,18 +127,8 @@ def build_dataloaders(
 
     train_transform, test_transform = build_transforms(config.dataset_name)
 
-    train_dataset = dataset_cls(
-        root=config.data_root,
-        train=True,
-        download=True,
-        transform=train_transform,
-    )
-    test_dataset = dataset_cls(
-        root=config.data_root,
-        train=False,
-        download=True,
-        transform=test_transform,
-    )
+    train_dataset = _make_dataset(config.dataset_name, dataset_cls, config.data_root, True, train_transform)
+    test_dataset = _make_dataset(config.dataset_name, dataset_cls, config.data_root, False, test_transform)
 
     forget_indices, retain_indices = split_indices_by_forget_class(
         dataset=train_dataset,

@@ -1,6 +1,6 @@
 from typing import Literal
 
-DatasetName = Literal["cifar10", "cifar100"]
+DatasetName = Literal["cifar10", "cifar100", "svhn"]
 UnlearningMethod = Literal[
     "random_labels",
     "negative_grad",

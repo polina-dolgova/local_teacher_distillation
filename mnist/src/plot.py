@@ -617,13 +617,24 @@ def plot_similarity_vs_accuracy_drop_on_ax(
     corr_all = np.corrcoef(sim_vals, acc_drop)[0, 1]
     corr_other = np.corrcoef(sim_other, drop_other)[0, 1]
 
+    # ax.scatter(
+    #     sim_other,
+    #     drop_other,
+    #     s=70,
+    #     facecolors="white",
+    #     edgecolors="black",
+    #     linewidths=1.2,
+    #     zorder=3,
+    #     label="Other classes",
+    # )
     ax.scatter(
         sim_other,
         drop_other,
-        s=70,
-        facecolors="white",
+        s=75,
+        facecolors="gray",
         edgecolors="black",
-        linewidths=1.2,
+        linewidths=0.8,
+        alpha=0.45,
         zorder=3,
         label="Other classes",
     )
@@ -665,12 +676,22 @@ def plot_similarity_vs_accuracy_drop_on_ax(
     )
 
     for x, y, cls in zip(sim_other, drop_other, classes_other):
+        # ax.annotate(
+        #     str(cls),
+        #     (x, y),
+        #     xytext=(4, 4),
+        #     textcoords="offset points",
+        #     fontsize=9,
+        # )
         ax.annotate(
             str(cls),
             (x, y),
             xytext=(4, 4),
             textcoords="offset points",
-            fontsize=9,
+            fontsize=8,
+            color="0.35",
+            alpha=0.85,
+            zorder=5,
         )
 
     ax.annotate(
@@ -685,25 +706,65 @@ def plot_similarity_vs_accuracy_drop_on_ax(
     coef = np.polyfit(sim_other, drop_other, 1)
     x_line = np.linspace(sim_other.min(), sim_other.max(), 100)
     y_line = coef[0] * x_line + coef[1]
+    # ax.plot(
+    #     x_line,
+    #     y_line,
+    #     linestyle="--",
+    #     linewidth=1.8,
+    #     color="#55A868",
+    #     alpha=0.9,
+    #     label=f"Fit excl. deleted class (r={corr_other:.2f})",
+    # )
     ax.plot(
         x_line,
         y_line,
         linestyle="--",
-        linewidth=1.8,
+        linewidth=5.0,
         color="#55A868",
-        alpha=0.9,
-        label=f"Fit excl. deleted class (r={corr_other:.2f})",
+        alpha=1.0,
+        label=f"Trend excluding deleted class",
     )
 
     ax.axhline(0.0, linestyle=":", linewidth=1.2, color="gray", alpha=0.8)
 
-    ax.set_xlabel(f"Cosine similarity to class {deleted_class}")
-    ax.set_ylabel("Accuracy drop")
-    ax.set_title(method_name)
+    # ax.set_xlabel(f"Cosine similarity to class {deleted_class}")
+    # ax.set_ylabel("Accuracy drop")
+    # ax.set_title(method_name)
+
+    ax.set_xlabel(f"Similarity to deleted class {deleted_class}")
+    ax.set_ylabel("Accuracy drop vs. retraining")
+    ax.set_title(method_name, fontweight="bold")
     ax.grid(alpha=0.2)
 
-    if show_legend:
-        ax.legend(frameon=False)
+    # if show_legend:
+    #     ax.legend(frameon=False)
+    # ax.text(
+    #     0.97,
+    #     0.90,
+    #     f"trend: r={corr_other:.2f}",
+    #     transform=ax.transAxes,
+    #     ha="right",
+    #     va="top",
+    #     fontsize=10,
+    #     color="#2F7D46",
+    #     fontweight="bold",
+    # )
+
+    # ax.annotate(
+    #     "higher similarity\nlarger drop",
+    #     xy=(0.86, 0.72),
+    #     xytext=(0.57, 0.43),
+    #     xycoords="axes fraction",
+    #     textcoords="axes fraction",
+    #     fontsize=10,
+    #     color="#2F7D46",
+    #     fontweight="bold",
+    #     arrowprops=dict(
+    #         arrowstyle="->",
+    #         color="#2F7D46",
+    #         linewidth=2.0,
+    #     ),
+    # )
 
     return corr_all, corr_other
 
@@ -725,7 +786,7 @@ def plot_similarity_vs_accuracy_drop_pretty(
     fig, axes = plt.subplots(
         nrows,
         ncols,
-        figsize=(11, 3),
+        figsize=(8, 4),
         squeeze=False,
     )
 

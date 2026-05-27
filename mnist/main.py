@@ -65,32 +65,32 @@ def main(cfg, output_dir, device="cpu"):
         device=device,
     )
 
-    for support_selection in cfg.support_selections:
-        unlearn_with_distilled_labels(
-            model=model,
-            retrain_model=retrain_model,
-            output_dir=output_dir,
-            device=device,
-            similarity_matrices=similarity_matrices,
-            class_to_forget=cfg.class_to_forget,
-            support_size=cfg.support_size,
-            support_selection=support_selection,
-            support_feature_space=cfg.support_feature_space,
-            teacher_epochs=cfg.teacher_epochs,
-            teacher_batch_size=cfg.teacher_batch_size,
-            teacher_lr=cfg.teacher_lr,
-            teacher_weight_decay=cfg.teacher_weight_decay,
-            unlearn_steps=cfg.unlearn_steps,
-            unlearn_batch_size=cfg.unlearn_batch_size,
-            unlearn_lr=cfg.unlearn_lr,
-            unlearn_weight_decay=cfg.unlearn_weight_decay,
-            label_mode=cfg.label_mode,
-            k_neighbor=cfg.k_neighbor,
-            teacher_selection=cfg.teacher_selection,
-            temperature=cfg.temperature,
-            zero_forget_class_prob=cfg.zero_forget_class_prob,
-            seed=cfg.seed,
-        )
+    # for support_selection in cfg.support_selections:
+    #     unlearn_with_distilled_labels(
+    #         model=model,
+    #         retrain_model=retrain_model,
+    #         output_dir=output_dir,
+    #         device=device,
+    #         similarity_matrices=similarity_matrices,
+    #         class_to_forget=cfg.class_to_forget,
+    #         support_size=cfg.support_size,
+    #         support_selection=support_selection,
+    #         support_feature_space=cfg.support_feature_space,
+    #         teacher_epochs=cfg.teacher_epochs,
+    #         teacher_batch_size=cfg.teacher_batch_size,
+    #         teacher_lr=cfg.teacher_lr,
+    #         teacher_weight_decay=cfg.teacher_weight_decay,
+    #         unlearn_steps=cfg.unlearn_steps,
+    #         unlearn_batch_size=cfg.unlearn_batch_size,
+    #         unlearn_lr=cfg.unlearn_lr,
+    #         unlearn_weight_decay=cfg.unlearn_weight_decay,
+    #         label_mode=cfg.label_mode,
+    #         k_neighbor=cfg.k_neighbor,
+    #         teacher_selection=cfg.teacher_selection,
+    #         temperature=cfg.temperature,
+    #         zero_forget_class_prob=cfg.zero_forget_class_prob,
+    #         seed=cfg.seed,
+    #     )
 
 
 if __name__ == "__main__":
