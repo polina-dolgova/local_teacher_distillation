@@ -1,15 +1,31 @@
-# Local Teacher Distillation
+# Forgetting Has Neighbors: Localized Collateral Forgetting in Machine Unlearning
 
-This repository contains the code accompanying our submission.
+This repository contains the code accompanying the paper:
+
+> **Forgetting Has Neighbors: Localized Collateral Forgetting in Machine Unlearning**
+
 It implements experimental pipelines for studying **machine unlearning** across multiple settings, including large-scale image classification, small-scale benchmarks, and controlled synthetic experiments.
 
 ---
+
+## Installation
+
+```bash
+git clone https://github.com/polina-dolgova/local_teacher_distillation
+cd local_teacher_distillation
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+---
+
 ## Repository Structure
 
 The codebase is organized by experimental setting:
 
-* **`cifar/` — Image Classification (CIFAR-100)**
-  Large-scale experiments with deep neural networks (ResNet-56).
+* **`cifar/` — Image Classification (CIFAR-100 and SVHN)**
+  Large-scale experiments with deep neural networks (ResNet-56 on CIFAR-100, ViT-Tiny on SVHN).
   Includes implementations of multiple unlearning methods, retraining baselines, and evaluation pipelines.
 
 * **`mnist/` — Small-scale Experiments**

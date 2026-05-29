@@ -1,6 +1,9 @@
-# CIFAR Unlearning Experiments
+# Image Classification Unlearning Experiments
 
-This repository contains implementations of retraining and several unlearning methods for CIFAR-100 with a ResNet-56 backbone.
+This directory contains implementations of retraining and several unlearning methods for two settings:
+
+- **CIFAR-100** with a ResNet-56 backbone
+- **SVHN** with a ViT-Tiny backbone (patch size 4, image size 32×32)
 
 ---
 
@@ -62,6 +65,7 @@ python -m cifar.evaluate \
 
 ## 🔁 Retraining
 
+**ResNet-56 (CIFAR-100):**
 ```bash
 python -m cifar.retrain.train_resnet56_filtered \
   --save-dir <OUTPUT_DIR> \
@@ -69,6 +73,17 @@ python -m cifar.retrain.train_resnet56_filtered \
   --class-to-forget <CLASS_TO_FORGET> \
   --class-fraction-to-forget <FRACTION> \
   --nesterov \
+  --device <DEVICE> \
+  --seed <SEED>
+```
+
+**ViT-Tiny (SVHN):**
+```bash
+python -m cifar.retrain.train_vit_tiny_filtered \
+  --save-dir <OUTPUT_DIR> \
+  --dataset-name svhn \
+  --class-to-forget <CLASS_TO_FORGET> \
+  --class-fraction-to-forget <FRACTION> \
   --device <DEVICE> \
   --seed <SEED>
 ```
