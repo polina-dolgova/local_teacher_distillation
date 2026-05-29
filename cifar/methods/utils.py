@@ -47,7 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def resolve_output_dir(args: argparse.Namespace) -> Path:
     output_dir = (
-        Path(args.save_dir) / args.dataset_name / f"class_{args.class_to_forget}"
+        Path(args.save_dir)
+        / args.dataset_name
+        / f"class_{args.class_to_forget}"
+        / f"frac_{args.class_fraction_to_forget}"
+        / f"seed_{args.seed}"
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -74,6 +78,15 @@ def save_model(
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), output_dir / name)
+
+
+def warmup_cuda(model: torch.nn.Module, device: str) -> None:
+    if not torch.cuda.is_available():
+        return
+    with torch.no_grad():
+        dummy = torch.randn(1, 3, 32, 32, device=device)
+        _ = model(dummy)
+    torch.cuda.synchronize()
 
 
 def seed_everything(seed: int) -> None:

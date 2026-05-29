@@ -21,6 +21,7 @@ from cifar.methods.utils import (
     save_config,
     save_model,
     compute_eval_accuracy,
+    warmup_cuda,
 )
 from cifar.src.custom_types import *
 from cifar.src.datasets import (
@@ -244,6 +245,7 @@ def main() -> None:
         batch_size=128,
     )
 
+    warmup_cuda(net, device)
     start_time = time.time()
 
     print("===> Computing the adversarial set...")

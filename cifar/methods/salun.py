@@ -18,6 +18,7 @@ from cifar.methods.utils import (
     resolve_output_dir,
     compute_eval_accuracy,
     get_unlearning_datasets,
+    warmup_cuda,
 )
 from cifar.methods.dataloaders import (
     build_random_mixed_loader,
@@ -252,6 +253,7 @@ def unlearn_one_class_salun(
 
     history = {eval_name: [] for eval_name in eval_loaders}
 
+    warmup_cuda(unlearned_model, device)
     start_time = time.time()
     extra_time = 0.0
 

@@ -12,7 +12,7 @@ from cifar.src.models.features import (
 )
 
 
-def compute_imagenet_class_mean_embeddings_cifar(
+def compute_imagenet_class_mean_embeddings(
     dataset,
     num_classes: int,
     device: str = "cpu",
@@ -61,7 +61,7 @@ def compute_imagenet_class_mean_embeddings_cifar(
     return means
 
 
-def compute_full_model_class_mean_embeddings_cifar(
+def compute_full_model_class_mean_embeddings(
     model: torch.nn.Module,
     dataset,
     num_classes: int,

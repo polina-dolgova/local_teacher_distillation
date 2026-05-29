@@ -132,6 +132,11 @@ def main() -> None:
     total_train_time_seconds = 0.0
     total_wall_time_seconds = 0.0
 
+    if torch.cuda.is_available():
+        with torch.no_grad():
+            _ = model(torch.randn(1, 3, 32, 32, device=device))
+        torch.cuda.synchronize()
+
     global_start = time.perf_counter()
 
     for epoch in range(1, config.epochs + 1):

@@ -528,9 +528,19 @@ def _build_teacher_model(
             depth=4,
         ), "image"
 
+    if teacher_type == "medium_vit":
+        return timm.create_model(
+            "vit_tiny_patch16_224",
+            pretrained=False,
+            num_classes=num_classes,
+            img_size=32,
+            patch_size=4,
+            depth=8,
+        ), "image"
+
     raise ValueError(
         f"Unknown teacher_type: {teacher_type}. "
-        "Expected one of ['linear_frozen', 'mlp_frozen', 'small_cnn', 'resnet8', 'resnet56', 'shallow_vit']."
+        "Expected one of ['linear_frozen', 'mlp_frozen', 'small_cnn', 'resnet8', 'resnet56', 'shallow_vit', 'medium_vit']."
     )
 
 
@@ -690,7 +700,7 @@ def train_support_teacher(
         generator=g,
     )
 
-    if teacher_type == "shallow_vit":
+    if teacher_type in ("shallow_vit", "medium_vit"):
         optimizer = torch.optim.AdamW(
             teacher_model.parameters(),
             lr=lr,

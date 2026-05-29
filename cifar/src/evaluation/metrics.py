@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from pathlib import Path
 
-from cifar.src.models.features import extract_cifar_resnet56_penultimate
+from cifar.src.models.features import extract_cifar_resnet56_penultimate, get_feature_extractor
 from cifar.src.visualization.plots import (
     save_pointwise_topk_scatter_plot,
     save_similarity_survival_plots,
@@ -71,11 +71,15 @@ def _compute_similarity_to_forget_set(
     batch_size: int,
     num_workers: int,
     device: str,
+    feature_extractor_fn=None,
 ) -> torch.Tensor:
     """
     Compute cosine similarity of each retain point to the mean embedding
     of the forget dataset using ResNet-56 penultimate features.
     """
+    if feature_extractor_fn is None:
+        feature_extractor_fn = extract_cifar_resnet56_penultimate
+
     if len(retain_dataset) == 0:
         return torch.empty(0, dtype=torch.float32)
     if len(forget_dataset) == 0:
@@ -96,7 +100,7 @@ def _compute_similarity_to_forget_set(
         with torch.no_grad():
             for x, _ in loader:
                 x = x.to(device)
-                emb = extract_cifar_resnet56_penultimate(full_model, x)
+                emb = feature_extractor_fn(full_model, x)
                 all_embeddings.append(emb.cpu())
 
         if not all_embeddings:
@@ -252,6 +256,7 @@ def collect_extra_metrics(
     point_topk_fractions=[0.005, 0.01, 0.05, 0.1],
     save_plots: bool = True,
     plots_dir=None,
+    feature_extractor_fn=None,
 ) -> dict:
     """
     Compute additional evaluation metrics:
@@ -302,6 +307,7 @@ def collect_extra_metrics(
         batch_size=batch_size,
         num_workers=num_workers,
         device=device,
+        feature_extractor_fn=feature_extractor_fn,
     )
     # if save_plots and plots_dir is not None:
     #     save_similarity_survival_plots(

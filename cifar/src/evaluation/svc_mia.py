@@ -115,6 +115,7 @@ def _svc_fit_predict(
 
     x_shadow = torch.cat([shadow_train_feat, shadow_test_feat], dim=0).cpu().numpy()
     x_shadow = x_shadow.reshape(n_shadow_train + n_shadow_test, -1)
+    x_shadow = np.nan_to_num(x_shadow, nan=0.0)
 
     y_shadow = np.concatenate(
         [
@@ -129,15 +130,15 @@ def _svc_fit_predict(
     accs: list[float] = []
 
     if target_train_feat is not None and target_train_feat.numel() > 0:
-        x_target_train = (
-            target_train_feat.cpu().numpy().reshape(target_train_feat.shape[0], -1)
+        x_target_train = np.nan_to_num(
+            target_train_feat.cpu().numpy().reshape(target_train_feat.shape[0], -1), nan=0.0
         )
         pred_train = clf.predict(x_target_train)
         accs.append(float(pred_train.mean()))
 
     if target_test_feat is not None and target_test_feat.numel() > 0:
-        x_target_test = (
-            target_test_feat.cpu().numpy().reshape(target_test_feat.shape[0], -1)
+        x_target_test = np.nan_to_num(
+            target_test_feat.cpu().numpy().reshape(target_test_feat.shape[0], -1), nan=0.0
         )
         pred_test = clf.predict(x_target_test)
         accs.append(float(1.0 - pred_test.mean()))

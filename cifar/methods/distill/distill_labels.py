@@ -17,6 +17,7 @@ from cifar.methods.utils import (
     save_model,
     seed_everything,
     compute_eval_accuracy,
+    warmup_cuda,
 )
 from cifar.methods.retain_selection import get_subsets
 from cifar.methods.dataloaders import (
@@ -635,6 +636,7 @@ def unlearn_one_class(
         weight_decay=weight_decay,
     )
 
+    warmup_cuda(unlearned_model, device)
     start_time = time.time()
     extra_time = prepared["support_time"]
 

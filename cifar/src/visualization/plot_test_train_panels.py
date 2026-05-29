@@ -558,8 +558,7 @@ def plot_binned_similarity_train_test_panels(
     fig.tight_layout()
     fig.subplots_adjust(top=0.90, hspace=0.32, wspace=0.10)
 
-    plt.show()
-    # plt.savefig(output_path, dpi=200, bbox_inches="tight")
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
     return {

@@ -13,8 +13,8 @@ from cifar.src.models.features import get_feature_extractor
 from cifar.src.evaluation.accuracy import compute_per_class_accuracy
 from cifar.src.evaluation.similarity import (
     compute_cosine_similarity_to_forget_class,
-    compute_imagenet_class_mean_embeddings_cifar,
-    compute_full_model_class_mean_embeddings_cifar,
+    compute_imagenet_class_mean_embeddings,
+    compute_full_model_class_mean_embeddings,
 )
 
 from cifar.src.visualization.plots import (
@@ -24,7 +24,6 @@ from cifar.src.visualization.plots import (
 from cifar.src.config import (
     ExperimentConfig,
     save_experiment_config,
-    copy_unlearning_config_dir,
 )
 from cifar.src.evaluation.metrics import collect_extra_metrics
 from cifar.src.evaluation.svc_mia import compute_svc_mia_forget_efficacy
@@ -105,13 +104,13 @@ def compute_class_mean_embeddings(
     full_model, retain_dataset, forget_dataset, cfg, device="cpu"
 ):
     if cfg.similarity_source == "imagenet_resnet18":
-        class_mean_embeddings_retain = compute_imagenet_class_mean_embeddings_cifar(
+        class_mean_embeddings_retain = compute_imagenet_class_mean_embeddings(
             dataset=retain_dataset,
             num_classes=cfg.num_classes,
             selected_classes=cfg.selected_classes,
             device=device,
         )
-        class_mean_embeddings_forget = compute_imagenet_class_mean_embeddings_cifar(
+        class_mean_embeddings_forget = compute_imagenet_class_mean_embeddings(
             dataset=forget_dataset,
             num_classes=cfg.num_classes,
             selected_classes=cfg.selected_classes,
@@ -124,7 +123,7 @@ def compute_class_mean_embeddings(
 
     elif cfg.similarity_source == "full_model":
         feature_extractor_fn = get_feature_extractor(cfg.dataset_name)
-        class_mean_embeddings_retain = compute_full_model_class_mean_embeddings_cifar(
+        class_mean_embeddings_retain = compute_full_model_class_mean_embeddings(
             model=full_model,
             dataset=retain_dataset,
             num_classes=cfg.num_classes,
@@ -132,7 +131,7 @@ def compute_class_mean_embeddings(
             device=device,
             feature_extractor_fn=feature_extractor_fn,
         )
-        class_mean_embeddings_forget = compute_full_model_class_mean_embeddings_cifar(
+        class_mean_embeddings_forget = compute_full_model_class_mean_embeddings(
             model=full_model,
             dataset=forget_dataset,
             num_classes=cfg.num_classes,
@@ -263,34 +262,35 @@ def run_experiment(cfg: ExperimentConfig, device="cpu") -> None:
         )
     )
 
-    _, retrain_retain_accuracy, retrain_forget_accuracy = evaluate_model_accuracy(
-        model_path=Path(cfg.retrain_model_paths[0]),
-        cfg=cfg,
-        retain_dataset=retain_dataset,
-        forget_dataset=forget_dataset,
-        class_names=class_names,
-        mode="retrain",
-        device=device,
-    )
+    # _, retrain_retain_accuracy, retrain_forget_accuracy = evaluate_model_accuracy(
+    #     model_path=Path(cfg.retrain_model_paths[0]),
+    #     cfg=cfg,
+    #     retain_dataset=retain_dataset,
+    #     forget_dataset=forget_dataset,
+    #     class_names=class_names,
+    #     mode="retrain",
+    #     device=device,
+    # )
 
-    # Save raw arrays for later analysis
-    save_accuracy_drop_vs_similarity_plot(
-        retain_acc=retrain_retain_accuracy,
-        forget_acc=retrain_forget_accuracy,
-        unlearn_retain_acc=unlearned_retain_accuracy,
-        unlearn_forget_acc=unlearned_forget_accuracy,
-        cosine_similarity_retain=cosine_similarity_retain,
-        cosine_similarity_forget=cosine_similarity_forget,
-        forget_class=cfg.class_to_forget,
-        class_names=class_names,
-        output_path=cfg.output_dir / "accuracy_drop_vs_similarity.png",
-        title=(
-            f"Accuracy drop vs similarity to forget class "
-            f"({cfg.dataset_name}, {class_names[cfg.class_to_forget]})"
-        ),
-        xlabel=similarity_xlabel,
-        selected_classes=cfg.selected_classes,
-    )
+    # save_accuracy_drop_vs_similarity_plot(
+    #     retain_acc=retrain_retain_accuracy,
+    #     forget_acc=retrain_forget_accuracy,
+    #     unlearn_retain_acc=unlearned_retain_accuracy,
+    #     unlearn_forget_acc=unlearned_forget_accuracy,
+    #     cosine_similarity_retain=cosine_similarity_retain,
+    #     cosine_similarity_forget=cosine_similarity_forget,
+    #     forget_class=cfg.class_to_forget,
+    #     class_names=class_names,
+    #     output_path=cfg.output_dir / "accuracy_drop_vs_similarity.png",
+    #     title=(
+    #         f"Accuracy drop vs similarity to forget class "
+    #         f"({cfg.dataset_name}, {class_names[cfg.class_to_forget]})"
+    #     ),
+    #     xlabel=similarity_xlabel,
+    #     selected_classes=cfg.selected_classes,
+    # )
+
+    feature_extractor_fn = get_feature_extractor(cfg.dataset_name)
 
     print("Calculating extra metrics...")
     cfg.metrics = collect_extra_metrics(
@@ -306,6 +306,7 @@ def run_experiment(cfg: ExperimentConfig, device="cpu") -> None:
         device=device,
         save_plots=True,
         plots_dir=cfg.output_dir,
+        feature_extractor_fn=feature_extractor_fn,
     )
 
     if cfg.test_on_train:
@@ -323,7 +324,7 @@ def run_experiment(cfg: ExperimentConfig, device="cpu") -> None:
 
     save_experiment_config(cfg, cfg.output_dir)
 
-    print("Copying model config to the output folder")
-    copy_unlearning_config_dir(
-        Path(cfg.unlearned_model_path), cfg.output_dir / "unlearning_config"
-    )
+    # print("Copying model config to the output folder")
+    # copy_unlearning_config_dir(
+    #     Path(cfg.unlearned_model_path), cfg.output_dir / "unlearning_config"
+    # )

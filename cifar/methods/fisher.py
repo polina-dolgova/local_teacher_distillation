@@ -16,6 +16,7 @@ from cifar.methods.utils import (
     save_model,
     compute_eval_accuracy,
     get_unlearning_datasets,
+    warmup_cuda,
 )
 from cifar.methods.dataloaders import build_separate_dataloaders, build_eval_loaders
 
@@ -209,6 +210,7 @@ def unlearn_one_class(
     unlearned_model = deepcopy(model).to(device)
     criterion = torch.nn.CrossEntropyLoss()
 
+    warmup_cuda(unlearned_model, device)
     start_time = time.time()
 
     unlearned_model = Wfisher(

@@ -42,3 +42,6 @@ archive/
 # TRW is not used
 *trw.py
 cifar_archive
+scripts
+cifar/analysis
+data

@@ -170,7 +170,6 @@ def plot_forget_class_metrics_barplot(
     plt.legend()
     plt.tight_layout()
 
-    plt.show()
     plt.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close()
 
@@ -179,7 +178,8 @@ def plot_forget_class_metrics_barplot_differences(
     output_path: str | Path,
     method_order: list[str] | None = None,
     method_display_names: dict[str, str] | None = None,
-    retrain_key: str = "retrain"
+    retrain_key: str = "retrain",
+    main_method_key: str = "distill_labels",
 ) -> None:
     """
     Plot grouped bar chart for forget-class metrics as differences from retrain.
@@ -301,12 +301,14 @@ def plot_forget_class_metrics_barplot_differences(
     )
 
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=0, ha="right")
+    ax.set_xticklabels(labels, rotation=0, ha="center")
+    main_display = method_display_names.get(main_method_key, main_method_key)
+    retrain_display = method_display_names.get(retrain_key, retrain_key)
     for tick_label in ax.get_xticklabels():
-        if tick_label.get_text() == method_display_names["distill_labels"]:
+        if tick_label.get_text() == main_display:
             tick_label.set_color("#9548B2")
             tick_label.set_fontweight("bold")
-        if tick_label.get_text() == method_display_names[retrain_key]:
+        elif tick_label.get_text() == retrain_display:
             tick_label.set_color("#C9A227")
     ax.set_ylabel("Accuracy difference from retrain (pp)")
     ax.set_title("Affected-Class Metrics Relative to Retrain")
@@ -322,9 +324,7 @@ def plot_forget_class_metrics_barplot_differences(
         max(y_max, band_max) + margin,
     )
 
-    ax.legend()
+    ax.legend(loc="lower left")
     fig.tight_layout()
-
-    #fig.savefig(output_path, dpi=200, bbox_inches="tight")
-    plt.show()
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
